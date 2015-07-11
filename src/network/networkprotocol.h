@@ -617,6 +617,13 @@ enum ToClientCommand
 		u32 id
 	*/
 
+	TOCLIENT_BROWSER_ADDRESS = 0x54,
+	/*
+	u16 command
+	u16 length
+	wstring message
+	*/
+
 	TOCLIENT_SRP_BYTES_S_B = 0x60,
 	/*
 		Belonging to AUTH_MECHANISM_LEGACY_PASSWORD and AUTH_MECHANISM_SRP.

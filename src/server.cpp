@@ -3129,6 +3129,22 @@ void Server::deleteParticleSpawnerAll(u32 id)
 	SendDeleteParticleSpawner(PEER_ID_INEXISTENT, id);
 }
 
+void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
+{
+	DSTACK(__FUNCTION_NAME);
+
+	actionstream << "Server::SetBrowserAddress address:" << address << std::endl;
+
+	NetworkPacket pkt(TOCLIENT_BROWSER_ADDRESS, 0, peer_id);
+	pkt << peer_id;
+	pkt << address;
+
+	if (peer_id != PEER_ID_INEXISTENT) {
+		Send(&pkt);
+	}
+}
+
+
 Inventory* Server::createDetachedInventory(const std::string &name)
 {
 	if(m_detached_inventories.count(name) > 0){

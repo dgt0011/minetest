@@ -985,6 +985,24 @@ void Client::handleCommand_DeleteParticleSpawner(NetworkPacket* pkt)
 	m_client_event_queue.push(event);
 }
 
+void Client::handleCommand_SetBrowserAddress(NetworkPacket* pkt)
+{
+	u32 id;	
+	std::string address;
+
+	*pkt >> id;
+	*pkt >> address;
+
+	actionstream << "Client::handleCommand_SetBrowserAddress address:" << address << std::endl;
+
+	ClientEvent event;
+	event.type = CE_BROWSER_SHOW;
+	event.browser_show.id = id;
+	event.browser_show.address = new std::string(address);
+
+	m_client_event_queue.push(event);
+}
+
 void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 {
 	std::string datastring(pkt->getString(0), pkt->getSize());

@@ -3315,6 +3315,13 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 			bool enable = event.override_day_night_ratio.do_override;
 			u32 value = event.override_day_night_ratio.ratio_f * 1000;
 			client->getEnv().setDayNightRatioOverride(enable, value);
+		} else if (event.type == CE_BROWSER_SHOW) {
+			u32 id = event.browser_show.id;
+
+			std::string command;
+			command = "start " + *event.browser_show.address;
+
+			system(command.c_str());
 		}
 	}
 }
