@@ -215,11 +215,28 @@ void Client::handleCommand_AccessDenied(NetworkPacket* pkt)
 
 		u8 denyCode = SERVER_ACCESSDENIED_UNEXPECTED_DATA;
 		*pkt >> denyCode;
-		if (denyCode == SERVER_ACCESSDENIED_CUSTOM_STRING) {
+		if (denyCode == SERVER_ACCESSDENIED_SHUTDOWN ||
+				denyCode == SERVER_ACCESSDENIED_CRASH) {
 			*pkt >> m_access_denied_reason;
-		}
-		else if (denyCode < SERVER_ACCESSDENIED_MAX) {
+			if (m_access_denied_reason == "") {
+				m_access_denied_reason = accessDeniedStrings[denyCode];
+			}
+			u8 reconnect;
+			*pkt >> reconnect;
+			m_access_denied_reconnect = reconnect & 1;
+		} else if (denyCode == SERVER_ACCESSDENIED_CUSTOM_STRING) {
+			*pkt >> m_access_denied_reason;
+		} else if (denyCode < SERVER_ACCESSDENIED_MAX) {
 			m_access_denied_reason = accessDeniedStrings[denyCode];
+		} else {
+			// Allow us to add new error messages to the
+			// protocol without raising the protocol version, if we want to.
+			// Until then (which may be never), this is outside
+			// of the defined protocol.
+			*pkt >> m_access_denied_reason;
+			if (m_access_denied_reason == "") {
+				m_access_denied_reason = "Unknown";
+			}
 		}
 	}
 	// 13/03/15 Legacy code from 0.4.12 and lesser. must stay 1 year
@@ -449,33 +466,23 @@ void Client::handleCommand_ActiveObjectMessages(NetworkPacket* pkt)
 			string message
 		}
 	*/
-	char buf[6];
-	// Get all data except the command number
 	std::string datastring(pkt->getString(0), pkt->getSize());
-	// Throw them in an istringstream
 	std::istringstream is(datastring, std::ios_base::binary);
 
 	try {
-		while(is.eof() == false) {
-			is.read(buf, 2);
-			u16 id = readU16((u8*)buf);
-			if (is.eof())
+		while (is.good()) {
+			u16 id = readU16(is);
+			if (!is.good())
 				break;
-			is.read(buf, 2);
-			size_t message_size = readU16((u8*)buf);
-			std::string message;
-			message.reserve(message_size);
-			for (u32 i = 0; i < message_size; i++) {
-				is.read(buf, 1);
-				message.append(buf, 1);
-			}
+
+			std::string message = deSerializeString(is);
+
 			// Pass on to the environment
 			m_env.processActiveObjectMessage(id, message);
 		}
-	// Packet could be unreliable then ignore it
-	} catch (PacketError &e) {
-		infostream << "handleCommand_ActiveObjectMessages: " << e.what()
-					<< ". The packet is unreliable, ignoring" << std::endl;
+	} catch (SerializationError &e) {
+		errorstream << "Client::handleCommand_ActiveObjectMessages: "
+			<< "caught SerializationError: " << e.what() << std::endl;
 	}
 }
 
