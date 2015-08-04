@@ -13,7 +13,7 @@ PATHCFGFILE = path.cfg
 
 ROOT = $(shell pwd)
 
-GAMES_TO_COPY = minetest_game
+GAMES_TO_COPY = eidy
 
 
 VERSION_MAJOR := $(shell cat $(ROOT)/../../CMakeLists.txt | \
@@ -745,23 +745,24 @@ assets : $(ASSETS_TIMESTAMP)
 	if [ $$REFRESH -ne 0 ] ; then                                              \
 	echo "assets changed, refreshing...";                                      \
 	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${ROOT}/assets/Minetest;                                          \
-	cp ${ROOT}/../../minetest.conf.example ${ROOT}/assets/Minetest;            \
-	cp ${ROOT}/../../README.txt ${ROOT}/assets/Minetest;                       \
-	cp -r ${ROOT}/../../builtin ${ROOT}/assets/Minetest;                       \
-	cp -r ${ROOT}/../../client ${ROOT}/assets/Minetest;                        \
-	cp -r ${ROOT}/../../doc ${ROOT}/assets/Minetest;                           \
-	cp -r ${ROOT}/../../fonts ${ROOT}/assets/Minetest;                         \
-	mkdir ${ROOT}/assets/Minetest/games;                                       \
+	mkdir -p ${ROOT}/assets/eidy;                                          	   \
+	cp ${ROOT}/../../minetest.conf.example ${ROOT}/assets/eidy; 	           \
+	cp ${ROOT}/../../README.txt ${ROOT}/assets/eidy;                       	   \
+	cp -r ${ROOT}/../../builtin ${ROOT}/assets/eidy;                           \
+	cp -r ${ROOT}/../../client ${ROOT}/assets/eidy;                            \
+	cp -r ${ROOT}/../../doc ${ROOT}/assets/eidy;                               \
+	cp -r ${ROOT}/../../fonts ${ROOT}/assets/eidy;                             \
+	cp -r ${ROOT}/../../worlds ${ROOT}/assets/eidy;                            \
+	mkdir ${ROOT}/assets/eidy/games;                                           \
 	for game in ${GAMES_TO_COPY};                                              \
 	do                                                                         \
-	    cp -r ${ROOT}/../../games/$$game ${ROOT}/assets/Minetest/games/;       \
+	    cp -r ${ROOT}/../../games/$$game ${ROOT}/assets/eidy/games/;           \
 	done;                                                                      \
-	cp -r ${ROOT}/../../mods ${ROOT}/assets/Minetest;                          \
-	cp -r ${ROOT}/../../po ${ROOT}/assets/Minetest;                            \
-	cp -r ${ROOT}/../../textures ${ROOT}/assets/Minetest;                      \
-	mkdir -p ${ROOT}/assets/Minetest/media;                                    \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${ROOT}/assets/Minetest/media;         \
+	cp -r ${ROOT}/../../mods ${ROOT}/assets/eidy;                              \
+	cp -r ${ROOT}/../../po ${ROOT}/assets/eidy;                                \
+	cp -r ${ROOT}/../../textures ${ROOT}/assets/eidy;                          \
+	mkdir -p ${ROOT}/assets/eidy/media;                                        \
+	cp -r ${IRRLICHT_DIR}/media/Shaders ${ROOT}/assets/eidy/media;             \
 	cd ${ROOT}/assets ||  exit 1;                                              \
 	find . -name "timestamp" -exec rm {} \; ;                                  \
 	find . -name "*.blend" -exec rm {} \; ;                                    \
@@ -770,7 +771,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find Minetest >"filelist.txt";                                             \
+	find eidy >"filelist.txt";                                             \
 	cp ${ROOT}/${ASSETS_TIMESTAMP} ${ROOT}/${ASSETS_TIMESTAMP}.old;            \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
@@ -795,8 +796,8 @@ apk: $(PATHCFGFILE) assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB) $
 	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" &&                             \
 	ant $$BUILD_TYPE &&                                                        \
 	echo "++ Success!" &&                                                      \
-	echo "APK: bin/Minetest-$$BUILD_TYPE.apk" &&                               \
-	echo "You can install it with \`adb install -r bin/Minetest-$$BUILD_TYPE.apk\`"
+	echo "APK: bin/eidy-$$BUILD_TYPE.apk" &&                               \
+	echo "You can install it with \`adb install -r bin/eidy-$$BUILD_TYPE.apk\`"
 
 prep_srcdir :
 	@if [ ! -e ${ROOT}/jni/src ]; then                                         \
@@ -810,7 +811,7 @@ clean_apk : manifest
 
 install_debug :
 	@export PATH=$$PATH:${SDKFOLDER}platform-tools:${ANDROID_NDK};             \
-	adb install -r ${ROOT}/bin/Minetest-debug.apk
+	adb install -r ${ROOT}/bin/eidy-debug.apk
 
 install :
 	@export PATH=$$PATH:${SDKFOLDER}platform-tools:${ANDROID_NDK};             \
