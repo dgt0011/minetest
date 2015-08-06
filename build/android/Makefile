@@ -108,6 +108,7 @@ IRRLICHT_LIB = $(IRRLICHT_DIR)lib/Android/libIrrlicht.a
 IRRLICHT_TIMESTAMP = $(IRRLICHT_DIR)timestamp
 IRRLICHT_TIMESTAMP_INT = $(ROOT)/deps/irrlicht_timestamp
 IRRLICHT_URL_SVN = http://svn.code.sf.net/p/irrlicht/code/branches/ogl-es/
+IRRLICHT_URL_GIT = https://github.com/dgt0011/irrlicht-ogl-es.git
 
 OPENSSL_VERSION = 1.0.1l
 OPENSSL_BASEDIR = openssl-$(OPENSSL_VERSION)
@@ -517,7 +518,7 @@ irrlicht_download :
 		echo "irrlicht sources missing, downloading...";                       \
 		mkdir -p ${ROOT}/deps;                                                 \
 		cd deps;                                                               \
-		svn co ${IRRLICHT_URL_SVN} irrlicht || exit 1;                         \
+		git clone ${IRRLICHT_URL_GIT} irrlicht|| exit 1;		      \
 		cd irrlicht;                                                           \
 		patch -p1 < ../../irrlicht-touchcount.patch || exit 1;                 \
 		patch -p1 < ../../irrlicht-back_button.patch || exit 1;                \
