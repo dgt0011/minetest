@@ -3363,7 +3363,15 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 #endif
 
 #ifdef ANDROID
-			JNIEnv *env;
+
+		//chat_backend->addMessage(L"", L"You died.");
+		if (porting::jnienv == nullptr)	{
+			chat_backend->addMessage(L"", L"jnienv is null.");
+		}
+		else {
+			chat_backend->addMessage(L"", L"jnienv is alive.");
+		}
+
 #endif
 
 		}
