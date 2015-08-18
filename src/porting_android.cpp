@@ -212,22 +212,14 @@ void showInputDialog(const std::string& acceptButton, const  std::string& hint,
 
 void showBrowser(const std::string& url)
 {
-	errorstream << "DEBUG:: porting::showBrowser trying to show '" << url << "'" << std::endl;
-	
 	jmethodID showbrowserMethod = jnienv->GetMethodID(nativeActivity,"showBrowser",
 		"(Ljava/lang/String;)V");
 
-	errorstream << "DEBUG:: got showbrowserMethod" << std::endl;
-
 	if (NULL == showbrowserMethod) {
 		assert("porting::showBrowser unable to find java show browser method" == 0);
-	} else {
-		errorstream << "DEBUG:: porting::showBrowser able to find java show browser method-SUCCESS" << std::endl;
-	}
+	} 
 
-	jstring jUrl	 	 = jnienv->NewStringUTF(url.c_str());
-	
-	errorstream << "DEBUG:: jUrl created.  About to invoke jnienv->callvoidmethod" << std::endl;
+	jstring jUrl = jnienv->NewStringUTF(url.c_str());
 	
 	jnienv->CallVoidMethod(app_global->activity->clazz, showbrowserMethod, jUrl);
 }
