@@ -753,7 +753,6 @@ assets : $(ASSETS_TIMESTAMP)
 	cp -r ${ROOT}/../../client ${ROOT}/assets/eidy;                            \
 	cp -r ${ROOT}/../../doc ${ROOT}/assets/eidy;                               \
 	cp -r ${ROOT}/../../fonts ${ROOT}/assets/eidy;                             \
-	cp -r ${ROOT}/../../worlds ${ROOT}/assets/eidy;                            \
 	mkdir ${ROOT}/assets/eidy/games;                                           \
 	for game in ${GAMES_TO_COPY};                                              \
 	do                                                                         \
@@ -774,6 +773,7 @@ assets : $(ASSETS_TIMESTAMP)
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
 	find eidy >"filelist.txt";                                             \
 	cp ${ROOT}/${ASSETS_TIMESTAMP} ${ROOT}/${ASSETS_TIMESTAMP}.old;            \
+	cp -r ${ROOT}/../../worlds ${ROOT}/assets/eidy;                            \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
 	fi
