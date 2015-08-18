@@ -378,6 +378,12 @@ public class MinetestAssetCopy extends Activity
 					
 				}
 				
+				if(isWorldFile(current_path))
+				{
+					// disable refreshing of world files so that the changes/explorations made by players doesn't get overwritten
+					refresh = false;
+				}
+				
 				if (refresh)
 				{
 					m_tocopy.add(current_path);
@@ -444,6 +450,11 @@ public class MinetestAssetCopy extends Activity
 		protected boolean isAssetFolder(String path)
 		{
 			return m_foldernames.contains(path);
+		}
+		
+		protected boolean isWorldFile(String path)
+		{
+			return path.contains("worlds/eid/");
 		}
 		
 		boolean m_copy_started = false;
