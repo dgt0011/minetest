@@ -94,6 +94,12 @@ public class MtNativeActivity extends NativeActivity {
 		System.loadLibrary("minetest");
 	}
 	
+	public void showBrowser(String url) {
+		Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(url));
+        startActivity(intent);
+	}
+	
 	private int m_MessagReturnCode;
 	private String m_MessageReturnValue;
 }

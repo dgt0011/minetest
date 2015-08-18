@@ -3363,47 +3363,7 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 #endif
 
 #ifdef ANDROID
-
-		if (porting::jnienv == NULL)	{
-			chat_backend->addMessage(L"", L"jnienv is null.");
-			
-		}
-		else {
-			chat_backend->addMessage(L"", L"jnienv is alive.");
-			
-			porting::app_global->activity->vm->AttachCurrentThread(&porting::jnienv, NULL);
-			jclass activityClass = porting::jnienv->FindClass("android/app/NativeActivity");
-			if(activityClass == NULL) {
-				chat_backend->addMessage(L"", L"activityClass is null.  Poop.");
-			}
-			else
-			{
-				jmethodID getClassLoader = porting::jnienv->GetMethodID(activityClass,"getClassLoader", "()Ljava/lang/ClassLoader;");
-				if(getClassLoader == NULL)
-				{
-					chat_backend->addMessage(L"", L"getClassLoader is null.  Poop.");
-				}
-				else
-				{
-					jobject cls = porting::jnienv->CallObjectMethod(porting::app_global->activity->clazz, getClassLoader);
-					jclass classLoader = porting::jnienv->FindClass("java/lang/ClassLoader");
-					jmethodID findClass = porting::jnienv->GetMethodID(classLoader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-					jmethodID contextMethod = porting::jnienv->GetMethodID(activityClass, "getApplicationContext", "()Landroid/content/Context;");
-					jobject contextObj = porting::jnienv->CallObjectMethod(porting::app_global->activity->clazz, contextMethod);
-					
-					jclass intentClass = porting::jnienv->FindClass("android/content/Intent");
-					jmethodID newIntent = porting::jnienv->GetMethodID(intentClass, "<init>", "()V");
-					jobject intent = porting::jnienv->AllocObject(intentClass);
-					porting::jnienv->CallVoidMethod(intent, newIntent);
-					
-					
-				}
-			}
-		}
-		
-		
-		//startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(*event.browser_show.address)));
-
+			porting::showInputDialog(wide_to_utf8(*event.browser_show.address));
 #endif
 
 		}
