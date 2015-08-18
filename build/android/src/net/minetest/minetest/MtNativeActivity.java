@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
+import android.net.Uri;
 
 public class MtNativeActivity extends NativeActivity {
 	@Override
@@ -39,6 +40,11 @@ public class MtNativeActivity extends NativeActivity {
 		startActivityForResult(intent, 101);
 		m_MessageReturnValue = "";
 		m_MessagReturnCode   = -1;
+	}
+	
+	public void showBrowser(String url) {
+		Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
+        startActivity(intent);
 	}
 	
 	public static native void putMessageBoxResult(String text);
@@ -92,12 +98,6 @@ public class MtNativeActivity extends NativeActivity {
 		// but if we do, we get nicer logcat errors when
 		// loading fails.
 		System.loadLibrary("minetest");
-	}
-	
-	public void showBrowser(String url) {
-		Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(Uri.parse(url));
-        startActivity(intent);
 	}
 	
 	private int m_MessagReturnCode;

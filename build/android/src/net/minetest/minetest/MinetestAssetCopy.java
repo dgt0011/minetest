@@ -375,14 +375,12 @@ public class MinetestAssetCopy extends Activity
 					{
 						refresh = false;
 					}
-					
-				}
-				
-				if(isWorldFile(current_path))
-				{
-					// disable refreshing of world files so that the changes/explorations made by players doesn't get overwritten
-					refresh = false;
-				}
+					if(isWorldFile(current_path))
+					{
+						// disable refreshing of world files so that the changes/explorations made by players doesn't get overwritten
+						refresh = false;
+					}					
+				}	
 				
 				if (refresh)
 				{
