@@ -3363,7 +3363,7 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 #endif
 
 #ifdef ANDROID
-			porting::showInputDialog(wide_to_utf8(*event.browser_show.address));
+			porting::showBrowser(wide_to_utf8(*event.browser_show.address));
 #endif
 
 		}
