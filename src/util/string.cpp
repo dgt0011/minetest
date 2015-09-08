@@ -136,8 +136,6 @@ std::string wide_to_utf8(const std::wstring &input)
 	return out;
 }
 #endif
-
-#endif
 #else // _WIN32
 
 std::wstring utf8_to_wide(const std::string &input)
