@@ -13,7 +13,7 @@ set(PROJECT_NAME_CAPITALIZED "Minetest")
 # Also remember to set PROTOCOL_VERSION in network/networkprotocol.h when releasing
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 4)
-set(VERSION_PATCH 12)
+set(VERSION_PATCH 13)
 set(VERSION_EXTRA "" CACHE STRING "Stuff to append to version string")
 
 # Change to false for releases
@@ -178,7 +178,7 @@ if(UNIX AND NOT APPLE)
 	install(FILES "doc/minetest.6" "doc/minetestserver.6" DESTINATION "${MANDIR}/man6")
 	install(FILES "misc/minetest.desktop" DESTINATION "${XDG_APPS_DIR}")
 	install(FILES "misc/minetest.appdata.xml" DESTINATION "${APPDATADIR}")
-	install(FILES "misc/minetest-icon.svg" DESTINATION "${ICONDIR}/hicolor/scalable/apps")
+	install(FILES "misc/minetest.svg" DESTINATION "${ICONDIR}/hicolor/scalable/apps")
 endif()
 
 if(APPLE)

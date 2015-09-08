@@ -44,7 +44,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "map.h"
 #include "emerge.h"
 #include "util/serialize.h"
-#include "jthread/jmutexautolock.h"
+#include "threading/mutex_auto_lock.h"
 
 #define PP(x) "("<<(x).X<<","<<(x).Y<<","<<(x).Z<<")"
 
@@ -204,34 +204,34 @@ u32 Environment::getDayNightRatio()
 
 void Environment::setTimeOfDaySpeed(float speed)
 {
-	JMutexAutoLock(this->m_timeofday_lock);
+	MutexAutoLock(this->m_timeofday_lock);
 	m_time_of_day_speed = speed;
 }
 
 float Environment::getTimeOfDaySpeed()
 {
-	JMutexAutoLock(this->m_timeofday_lock);
+	MutexAutoLock(this->m_timeofday_lock);
 	float retval = m_time_of_day_speed;
 	return retval;
 }
 
 void Environment::setTimeOfDay(u32 time)
 {
-	JMutexAutoLock(this->m_time_lock);
+	MutexAutoLock(this->m_time_lock);
 	m_time_of_day = time;
 	m_time_of_day_f = (float)time / 24000.0;
 }
 
 u32 Environment::getTimeOfDay()
 {
-	JMutexAutoLock(this->m_time_lock);
+	MutexAutoLock(this->m_time_lock);
 	u32 retval = m_time_of_day;
 	return retval;
 }
 
 float Environment::getTimeOfDayF()
 {
-	JMutexAutoLock(this->m_time_lock);
+	MutexAutoLock(this->m_time_lock);
 	float retval = m_time_of_day_f;
 	return retval;
 }
@@ -613,19 +613,19 @@ public:
 					= abm->getRequiredNeighbors();
 			for(std::set<std::string>::iterator
 					i = required_neighbors_s.begin();
-					i != required_neighbors_s.end(); i++)
+					i != required_neighbors_s.end(); ++i)
 			{
 				ndef->getIds(*i, aabm.required_neighbors);
 			}
 			// Trigger contents
 			std::set<std::string> contents_s = abm->getTriggerContents();
 			for(std::set<std::string>::iterator
-					i = contents_s.begin(); i != contents_s.end(); i++)
+					i = contents_s.begin(); i != contents_s.end(); ++i)
 			{
 				std::set<content_t> ids;
 				ndef->getIds(*i, ids);
 				for(std::set<content_t>::const_iterator k = ids.begin();
-						k != ids.end(); k++)
+						k != ids.end(); ++k)
 				{
 					content_t c = *k;
 					std::map<content_t, std::vector<ActiveABM> >::iterator j;
@@ -694,7 +694,7 @@ public:
 				continue;
 
 			for(std::vector<ActiveABM>::iterator
-					i = j->second.begin(); i != j->second.end(); i++) {
+					i = j->second.begin(); i != j->second.end(); ++i) {
 				if(myrand() % i->chance != 0)
 					continue;
 
@@ -772,7 +772,7 @@ void ServerEnvironment::activateBlock(MapBlock *block, u32 additional_dtime)
 		MapNode n;
 		for(std::map<v3s16, NodeTimer>::iterator
 				i = elapsed_timers.begin();
-				i != elapsed_timers.end(); i++){
+				i != elapsed_timers.end(); ++i){
 			n = block->getNodeNoEx(i->first);
 			v3s16 p = i->first + block->getPosRelative();
 			if(m_script->node_on_timer(p,n,i->second.elapsed))
@@ -1161,7 +1161,7 @@ void ServerEnvironment::step(float dtime)
 				MapNode n;
 				for(std::map<v3s16, NodeTimer>::iterator
 						i = elapsed_timers.begin();
-						i != elapsed_timers.end(); i++){
+						i != elapsed_timers.end(); ++i){
 					n = block->getNodeNoEx(i->first);
 					p = i->first + block->getPosRelative();
 					if(m_script->node_on_timer(p,n,i->second.elapsed))
@@ -1421,6 +1421,33 @@ void ServerEnvironment::getRemovedActiveObjects(v3s16 pos, s16 radius,
 
 		// Object is no longer visible
 		removed_objects.insert(id);
+	}
+}
+
+void ServerEnvironment::setStaticForActiveObjectsInBlock(
+	v3s16 blockpos, bool static_exists, v3s16 static_block)
+{
+	MapBlock *block = m_map->getBlockNoCreateNoEx(blockpos);
+	if (!block)
+		return;
+
+	for (std::map<u16, StaticObject>::iterator
+			so_it = block->m_static_objects.m_active.begin();
+			so_it != block->m_static_objects.m_active.end(); ++so_it) {
+		// Get the ServerActiveObject counterpart to this StaticObject
+		std::map<u16, ServerActiveObject *>::iterator ao_it;
+		ao_it = m_active_objects.find(so_it->first);
+		if (ao_it == m_active_objects.end()) {
+			// If this ever happens, there must be some kind of nasty bug.
+			errorstream << "ServerEnvironment::setStaticForObjectsInBlock(): "
+				"Object from MapBlock::m_static_objects::m_active not found "
+				"in m_active_objects";
+			continue;
+		}
+
+		ServerActiveObject *sao = ao_it->second;
+		sao->m_static_exists = static_exists;
+		sao->m_static_block  = static_block;
 	}
 }
 
@@ -1959,7 +1986,6 @@ void ServerEnvironment::deactivateFarObjects(bool force_delete)
 		m_active_objects.erase(*i);
 	}
 }
-
 
 #ifndef SERVER
 
