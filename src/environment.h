@@ -39,7 +39,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/numeric.h"
 #include "mapnode.h"
 #include "mapblock.h"
-#include "jthread/jmutex.h"
+#include "threading/mutex.h"
 #include "network/networkprotocol.h" // for AccessDeniedCode
 
 class ServerEnvironment;
@@ -127,8 +127,8 @@ protected:
 	bool m_cache_enable_shaders;
 
 private:
-	JMutex m_timeofday_lock;
-	JMutex m_time_lock;
+	Mutex m_timeofday_lock;
+	Mutex m_time_lock;
 
 };
 
@@ -326,6 +326,11 @@ public:
 	float getMaxLagEstimate() { return m_max_lag_estimate; }
 
 	std::set<v3s16>* getForceloadedBlocks() { return &m_active_blocks.m_forceloaded_list; };
+
+	// Sets the static object status all the active objects in the specified block
+	// This is only really needed for deleting blocks from the map
+	void setStaticForActiveObjectsInBlock(v3s16 blockpos,
+		bool static_exists, v3s16 static_block=v3s16(0,0,0));
 
 private:
 

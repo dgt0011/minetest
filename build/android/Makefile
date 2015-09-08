@@ -14,6 +14,7 @@ PATHCFGFILE = path.cfg
 ROOT = $(shell pwd)
 
 GAMES_TO_COPY = eidy
+MODS_TO_COPY =
 
 
 VERSION_MAJOR := $(shell cat $(ROOT)/../../CMakeLists.txt | \
@@ -28,7 +29,7 @@ VERSION_PATCH := $(shell cat $(ROOT)/../../CMakeLists.txt | \
 # Increase for each build!
 ################################################################################
 # Play Store actual version (16/03/15): 11
-ANDROID_VERSION_CODE = 12
+ANDROID_VERSION_CODE = 13
 
 ################################################################################
 # toolchain config for arm old processors
@@ -758,6 +759,10 @@ assets : $(ASSETS_TIMESTAMP)
 	for game in ${GAMES_TO_COPY};                                              \
 	do                                                                         \
 	    cp -r ${ROOT}/../../games/$$game ${ROOT}/assets/eidy/games/;           \
+	done; 
+	mkdir ${ROOT}/assets/eidy/mods;                                            \
+	for mod in ${MODS_TO_COPY}; do                                             \
+	    cp -r ${ROOT}/../../mods/$$mod ${ROOT}/assets/eidy/mods/;              \
 	done;                                                                      \
 	cp -r ${ROOT}/../../mods ${ROOT}/assets/eidy;                              \
 	cp -r ${ROOT}/../../po ${ROOT}/assets/eidy;                                \
@@ -869,7 +874,7 @@ $(ROOT)/jni/src/android_version.h : prep_srcdir
 	fi
 
 manifest :
-	@BASE_VERSION="${VERS_MAJOR}.${VERS_MINOR}.${VERS_PATCH}";                 \
+	@BASE_VERSION="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}";        \
 	if [ "${NDEBUG}x" != "x" ] ; then                                          \
 		DBG='';                                                                \
 		DBG_FLAG="android:debuggable=\"false\"";                               \

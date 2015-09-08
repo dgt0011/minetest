@@ -21,7 +21,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <algorithm>
 #include <sstream>
 #include <IFileSystem.h>
-#include "jthread/jmutexautolock.h"
+#include "threading/mutex_auto_lock.h"
 #include "util/auth.h"
 #include "util/directiontables.h"
 #include "util/pointedthing.h"
@@ -82,11 +82,11 @@ MeshUpdateQueue::MeshUpdateQueue()
 
 MeshUpdateQueue::~MeshUpdateQueue()
 {
-	JMutexAutoLock lock(m_mutex);
+	MutexAutoLock lock(m_mutex);
 
 	for(std::vector<QueuedMeshUpdate*>::iterator
 			i = m_queue.begin();
-			i != m_queue.end(); i++)
+			i != m_queue.end(); ++i)
 	{
 		QueuedMeshUpdate *q = *i;
 		delete q;
@@ -102,7 +102,7 @@ void MeshUpdateQueue::addBlock(v3s16 p, MeshMakeData *data, bool ack_block_to_se
 
 	assert(data);	// pre-condition
 
-	JMutexAutoLock lock(m_mutex);
+	MutexAutoLock lock(m_mutex);
 
 	if(urgent)
 		m_urgents.insert(p);
@@ -113,7 +113,7 @@ void MeshUpdateQueue::addBlock(v3s16 p, MeshMakeData *data, bool ack_block_to_se
 	*/
 	for(std::vector<QueuedMeshUpdate*>::iterator
 			i = m_queue.begin();
-			i != m_queue.end(); i++)
+			i != m_queue.end(); ++i)
 	{
 		QueuedMeshUpdate *q = *i;
 		if(q->p == p)
@@ -141,12 +141,12 @@ void MeshUpdateQueue::addBlock(v3s16 p, MeshMakeData *data, bool ack_block_to_se
 // Returns NULL if queue is empty
 QueuedMeshUpdate *MeshUpdateQueue::pop()
 {
-	JMutexAutoLock lock(m_mutex);
+	MutexAutoLock lock(m_mutex);
 
 	bool must_be_urgent = !m_urgents.empty();
 	for(std::vector<QueuedMeshUpdate*>::iterator
 			i = m_queue.begin();
-			i != m_queue.end(); i++)
+			i != m_queue.end(); ++i)
 	{
 		QueuedMeshUpdate *q = *i;
 		if(must_be_urgent && m_urgents.count(q->p) == 0)
@@ -228,6 +228,7 @@ Client::Client(
 	m_particle_manager(&m_env),
 	m_con(PROTOCOL_ID, 512, CONNECTION_TIMEOUT, ipv6, this),
 	m_device(device),
+	m_minimap_disabled_by_server(false),
 	m_server_ser_ver(SER_FMT_VER_INVALID),
 	m_proto_ver(0),
 	m_playeritem(0),
@@ -269,7 +270,7 @@ Client::Client(
 void Client::Stop()
 {
 	//request all client managed threads to stop
-	m_mesh_update_thread.Stop();
+	m_mesh_update_thread.stop();
 	// Save local server map
 	if (m_localdb) {
 		infostream << "Local map saving ended." << std::endl;
@@ -280,7 +281,7 @@ void Client::Stop()
 bool Client::isShutdown()
 {
 
-	if (!m_mesh_update_thread.IsRunning()) return true;
+	if (!m_mesh_update_thread.isRunning()) return true;
 
 	return false;
 }
@@ -289,8 +290,8 @@ Client::~Client()
 {
 	m_con.Disconnect();
 
-	m_mesh_update_thread.Stop();
-	m_mesh_update_thread.Wait();
+	m_mesh_update_thread.stop();
+	m_mesh_update_thread.wait();
 	while (!m_mesh_update_thread.m_queue_out.empty()) {
 		MeshUpdateResult r = m_mesh_update_thread.m_queue_out.pop_frontNoEx();
 		delete r.mesh;
@@ -617,7 +618,7 @@ void Client::step(float dtime)
 	{
 		for(std::map<int, u16>::iterator
 				i = m_sounds_to_objects.begin();
-				i != m_sounds_to_objects.end(); i++)
+				i != m_sounds_to_objects.end(); ++i)
 		{
 			int client_id = i->first;
 			u16 object_id = i->second;
@@ -642,7 +643,7 @@ void Client::step(float dtime)
 				i != m_sounds_server_to_client.end();) {
 			s32 server_id = i->first;
 			int client_id = i->second;
-			i++;
+			++i;
 			if(!m_sound->soundExists(client_id)) {
 				m_sounds_server_to_client.erase(server_id);
 				m_sounds_client_to_server.erase(client_id);
@@ -1105,7 +1106,7 @@ void Client::sendRemovedSounds(std::vector<s32> &soundList)
 	pkt << (u16) (server_ids & 0xFFFF);
 
 	for(std::vector<s32>::iterator i = soundList.begin();
-			i != soundList.end(); i++)
+			i != soundList.end(); ++i)
 		pkt << *i;
 
 	Send(&pkt);
@@ -1270,7 +1271,7 @@ void Client::sendPlayerPos()
 
 	u16 our_peer_id;
 	{
-		//JMutexAutoLock lock(m_con_mutex); //bulk comment-out
+		//MutexAutoLock lock(m_con_mutex); //bulk comment-out
 		our_peer_id = m_con.GetPeerID();
 	}
 
@@ -1794,7 +1795,7 @@ void Client::afterContentReceived(IrrlichtDevice *device)
 
 	// Start mesh update thread after setting up content definitions
 	infostream<<"- Starting mesh update thread"<<std::endl;
-	m_mesh_update_thread.Start();
+	m_mesh_update_thread.start();
 
 	m_state = LC_Ready;
 	sendReady();
