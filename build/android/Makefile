@@ -759,7 +759,7 @@ assets : $(ASSETS_TIMESTAMP)
 	for game in ${GAMES_TO_COPY};                                              \
 	do                                                                         \
 	    cp -r ${ROOT}/../../games/$$game ${ROOT}/assets/eidy/games/;           \
-	done; 
+	done; 									   \
 	mkdir ${ROOT}/assets/eidy/mods;                                            \
 	for mod in ${MODS_TO_COPY}; do                                             \
 	    cp -r ${ROOT}/../../mods/$$mod ${ROOT}/assets/eidy/mods/;              \
