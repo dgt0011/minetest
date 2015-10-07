@@ -450,6 +450,30 @@ size_t get_biome_list(lua_State *L, int index,
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// get_biome_id(biomename)
+// returns the biome id used in biomemap
+int ModApiMapgen::l_get_biome_id(lua_State *L)
+{
+	const char *biome_str = lua_tostring(L, 1);
+	if (!biome_str)
+		return 0;
+
+	BiomeManager *bmgr = getServer(L)->getEmergeManager()->biomemgr;
+
+	if (!bmgr)
+		return 0;
+
+	Biome *biome = (Biome *) bmgr->getByName(biome_str);
+
+	if (!biome || biome->index == OBJDEF_INVALID_INDEX)
+		return 0;
+
+	lua_pushinteger(L, biome->index);
+
+	return 1;
+}
+
+
 // get_mapgen_object(objectname)
 // returns the requested object used during map generation
 int ModApiMapgen::l_get_mapgen_object(lua_State *L)
@@ -580,7 +604,7 @@ int ModApiMapgen::l_get_mapgen_params(lua_State *L)
 	lua_pushinteger(L, params->chunksize);
 	lua_setfield(L, -2, "chunksize");
 
-	std::string flagstr = writeFlagString(params->flags, flagdesc_mapgen, (u32)-1);
+	std::string flagstr = writeFlagString(params->flags, flagdesc_mapgen, U32_MAX);
 	lua_pushstring(L, flagstr.c_str());
 	lua_setfield(L, -2, "flags");
 
@@ -595,7 +619,11 @@ int ModApiMapgen::l_set_mapgen_params(lua_State *L)
 	if (!lua_istable(L, 1))
 		return 0;
 
-	MapgenParams *params = &getServer(L)->getEmergeManager()->params;
+	EmergeManager *emerge = getServer(L)->getEmergeManager();
+	if (emerge->isRunning())
+		throw LuaError("Cannot set parameters while mapgen is running");
+
+	MapgenParams *params = &emerge->params;
 	u32 flags = 0, flagmask = 0;
 
 	lua_getfield(L, 1, "mgname");
@@ -612,6 +640,10 @@ int ModApiMapgen::l_set_mapgen_params(lua_State *L)
 	lua_getfield(L, 1, "water_level");
 	if (lua_isnumber(L, -1))
 		params->water_level = lua_tointeger(L, -1);
+
+	lua_getfield(L, 1, "chunksize");
+	if (lua_isnumber(L, -1))
+		params->chunksize = lua_tointeger(L, -1);
 
 	warn_if_field_exists(L, 1, "flagmask",
 		"Deprecated: flags field now includes unset flags.");
@@ -1257,6 +1289,7 @@ int ModApiMapgen::l_serialize_schematic(lua_State *L)
 
 void ModApiMapgen::Initialize(lua_State *L, int top)
 {
+	API_FCT(get_biome_id);
 	API_FCT(get_mapgen_object);
 
 	API_FCT(get_mapgen_params);
