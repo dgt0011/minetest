@@ -219,7 +219,7 @@ void EmergeManager::initMapgens()
 Mapgen *EmergeManager::getCurrentMapgen()
 {
 	for (u32 i = 0; i != m_threads.size(); i++) {
-		if (m_threads[i]->isSameThread())
+		if (m_threads[i]->isCurrentThread())
 			return m_threads[i]->m_mapgen;
 	}
 
@@ -476,7 +476,7 @@ EmergeThread::EmergeThread(Server *server, int ethreadid) :
 	m_emerge(NULL),
 	m_mapgen(NULL)
 {
-	name = "Emerge-" + itos(ethreadid);
+	m_name = "Emerge-" + itos(ethreadid);
 }
 
 
@@ -627,7 +627,7 @@ MapBlock *EmergeThread::finishGen(v3s16 pos, BlockMakeData *bmdata,
 
 void *EmergeThread::run()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	BEGIN_DEBUG_EXCEPTION_HANDLER
 
 	v3s16 pos;
@@ -700,6 +700,6 @@ void *EmergeThread::run()
 		m_server->setAsyncFatalError(err.str());
 	}
 
-	END_DEBUG_EXCEPTION_HANDLER(errorstream)
+	END_DEBUG_EXCEPTION_HANDLER
 	return NULL;
 }

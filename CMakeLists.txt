@@ -7,7 +7,7 @@ endif()
 
 # This can be read from ${PROJECT_NAME} after project() is called
 project(minetest)
-set(PROJECT_NAME_CAPITALIZED "Minetest")
+set(PROJECT_NAME_CAPITALIZED "eidy")
 
 
 # Also remember to set PROTOCOL_VERSION in network/networkprotocol.h when releasing

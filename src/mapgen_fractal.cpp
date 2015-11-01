@@ -28,6 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "content_sao.h"
 #include "nodedef.h"
 #include "voxelalgorithms.h"
+#include "profiler.h" // For TimeTaker
 #include "settings.h" // For g_settings
 #include "emerge.h"
 #include "dungeongen.h"
@@ -65,21 +66,24 @@ MapgenFractal::MapgenFractal(int mapgenid, MapgenParams *params, EmergeManager *
 
 	MapgenFractalParams *sp = (MapgenFractalParams *)params->sparams;
 	this->spflags = sp->spflags;
-	this->iterations = sp->iterations;
-	this->scale_x = sp->scale_x;
-	this->scale_y = sp->scale_y;
-	this->scale_z = sp->scale_z;
-	this->offset_x = sp->offset_x;
-	this->offset_y = sp->offset_y;
-	this->offset_z = sp->offset_z;
-	this->slice_w = sp->slice_w;
+
+	this->m_iterations = sp->m_iterations;
+	this->m_scale = sp->m_scale;
+	this->m_offset = sp->m_offset;
+	this->m_slice_w = sp->m_slice_w;
+
+	this->j_iterations = sp->j_iterations;
+	this->j_scale = sp->j_scale;
+	this->j_offset = sp->j_offset;
+	this->j_slice_w = sp->j_slice_w;
 	this->julia_x = sp->julia_x;
 	this->julia_y = sp->julia_y;
 	this->julia_z = sp->julia_z;
 	this->julia_w = sp->julia_w;
 
 	//// 2D terrain noise
-	noise_seabed = new Noise(&sp->np_seabed, seed, csize.X, csize.Z);
+	noise_seabed       = new Noise(&sp->np_seabed, seed, csize.X, csize.Z);
+	noise_filler_depth = new Noise(&sp->np_filler_depth, seed, csize.X, csize.Z);
 
 	//// 3D terrain noise
 	noise_cave1 = new Noise(&sp->np_cave1, seed, csize.X, csize.Y + 2, csize.Z);
@@ -123,7 +127,7 @@ MapgenFractal::MapgenFractal(int mapgenid, MapgenParams *params, EmergeManager *
 MapgenFractal::~MapgenFractal()
 {
 	delete noise_seabed;
-
+	delete noise_filler_depth;
 	delete noise_cave1;
 	delete noise_cave2;
 
@@ -141,22 +145,24 @@ MapgenFractalParams::MapgenFractalParams()
 {
 	spflags = 0;
 
-	iterations = 9;
-	scale_x = 1024.0;
-	scale_y = 256.0;
-	scale_z = 1024.0;
-	offset_x = -1.75;
-	offset_y = 0.0;
-	offset_z = 0.0;
-	slice_w = 0.0;
+	m_iterations = 9;  // Mandelbrot set only
+	m_scale = v3f(1024.0, 256.0, 1024.0);
+	m_offset = v3f(1.75, 0.0, 0.0);
+	m_slice_w = 0.0;
+
+	j_iterations = 9;  // Julia set only
+	j_scale = v3f(2048.0, 512.0, 2048.0);
+	j_offset = v3f(0.0, 1.0, 0.0);
+	j_slice_w = 0.0;
 	julia_x = 0.33;
 	julia_y = 0.33;
 	julia_z = 0.33;
 	julia_w = 0.33;
 
-	np_seabed = NoiseParams(-14, 9,  v3f(600, 600, 600), 41900, 5, 0.6, 2.0);
-	np_cave1  = NoiseParams(0,   12, v3f(128, 128, 128), 52534, 4, 0.5, 2.0);
-	np_cave2  = NoiseParams(0,   12, v3f(128, 128, 128), 10325, 4, 0.5, 2.0);
+	np_seabed       = NoiseParams(-14, 9,   v3f(600, 600, 600), 41900, 5, 0.6, 2.0);
+	np_filler_depth = NoiseParams(0,   1.2, v3f(150, 150, 150), 261,   3, 0.7, 2.0);
+	np_cave1        = NoiseParams(0,   12,  v3f(128, 128, 128), 52534, 4, 0.5, 2.0);
+	np_cave2        = NoiseParams(0,   12,  v3f(128, 128, 128), 10325, 4, 0.5, 2.0);
 }
 
 
@@ -164,20 +170,22 @@ void MapgenFractalParams::readParams(const Settings *settings)
 {
 	settings->getFlagStrNoEx("mgfractal_spflags", spflags, flagdesc_mapgen_fractal);
 
-	settings->getU16NoEx("mgfractal_iterations", iterations);
-	settings->getFloatNoEx("mgfractal_scale_x", scale_x);
-	settings->getFloatNoEx("mgfractal_scale_y", scale_y);
-	settings->getFloatNoEx("mgfractal_scale_z", scale_z);
-	settings->getFloatNoEx("mgfractal_offset_x", offset_x);
-	settings->getFloatNoEx("mgfractal_offset_y", offset_y);
-	settings->getFloatNoEx("mgfractal_offset_z", offset_z);
-	settings->getFloatNoEx("mgfractal_slice_w", slice_w);
+	settings->getU16NoEx("mgfractal_m_iterations", m_iterations);
+	settings->getV3FNoEx("mgfractal_m_scale", m_scale);
+	settings->getV3FNoEx("mgfractal_m_offset", m_offset);
+	settings->getFloatNoEx("mgfractal_m_slice_w", m_slice_w);
+
+	settings->getU16NoEx("mgfractal_j_iterations", j_iterations);
+	settings->getV3FNoEx("mgfractal_j_scale", j_scale);
+	settings->getV3FNoEx("mgfractal_j_offset", j_offset);
+	settings->getFloatNoEx("mgfractal_j_slice_w", j_slice_w);
 	settings->getFloatNoEx("mgfractal_julia_x", julia_x);
 	settings->getFloatNoEx("mgfractal_julia_y", julia_y);
 	settings->getFloatNoEx("mgfractal_julia_z", julia_z);
 	settings->getFloatNoEx("mgfractal_julia_w", julia_w);
 
 	settings->getNoiseParams("mgfractal_np_seabed", np_seabed);
+	settings->getNoiseParams("mgfractal_np_filler_depth", np_filler_depth);
 	settings->getNoiseParams("mgfractal_np_cave1", np_cave1);
 	settings->getNoiseParams("mgfractal_np_cave2", np_cave2);
 }
@@ -187,20 +195,22 @@ void MapgenFractalParams::writeParams(Settings *settings) const
 {
 	settings->setFlagStr("mgfractal_spflags", spflags, flagdesc_mapgen_fractal, U32_MAX);
 
-	settings->setU16("mgfractal_iterations", iterations);
-	settings->setFloat("mgfractal_scale_x", scale_x);
-	settings->setFloat("mgfractal_scale_y", scale_y);
-	settings->setFloat("mgfractal_scale_z", scale_z);
-	settings->setFloat("mgfractal_offset_x", offset_x);
-	settings->setFloat("mgfractal_offset_y", offset_y);
-	settings->setFloat("mgfractal_offset_z", offset_z);
-	settings->setFloat("mgfractal_slice_w", slice_w);
+	settings->setU16("mgfractal_m_iterations", m_iterations);
+	settings->setV3F("mgfractal_m_scale", m_scale);
+	settings->setV3F("mgfractal_m_offset", m_offset);
+	settings->setFloat("mgfractal_m_slice_w", m_slice_w);
+
+	settings->setU16("mgfractal_j_iterations", j_iterations);
+	settings->setV3F("mgfractal_j_scale", j_scale);
+	settings->setV3F("mgfractal_j_offset", j_offset);
+	settings->setFloat("mgfractal_j_slice_w", j_slice_w);
 	settings->setFloat("mgfractal_julia_x", julia_x);
 	settings->setFloat("mgfractal_julia_y", julia_y);
 	settings->setFloat("mgfractal_julia_z", julia_z);
 	settings->setFloat("mgfractal_julia_w", julia_w);
 
 	settings->setNoiseParams("mgfractal_np_seabed", np_seabed);
+	settings->setNoiseParams("mgfractal_np_filler_depth", np_filler_depth);
 	settings->setNoiseParams("mgfractal_np_cave1", np_cave1);
 	settings->setNoiseParams("mgfractal_np_cave2", np_cave2);
 }
@@ -238,7 +248,7 @@ void MapgenFractal::makeChunk(BlockMakeData *data)
 	this->generating = true;
 	this->vm   = data->vmanip;
 	this->ndef = data->nodedef;
-	//TimeTaker t("makeChunk");
+	TimeTaker t("makeChunk");
 
 	v3s16 blockpos_min = data->blockpos_min;
 	v3s16 blockpos_max = data->blockpos_max;
@@ -320,7 +330,7 @@ void MapgenFractal::makeChunk(BlockMakeData *data)
 	// Sprinkle some dust on top after everything else was generated
 	dustTopNodes();
 
-	//printf("makeChunk: %dms\n", t.stop());
+	printf("makeChunk: %dms\n", t.stop());
 
 	updateLiquid(&data->transforming_liquid, full_node_min, full_node_max);
 
@@ -343,6 +353,7 @@ void MapgenFractal::calculateNoise()
 	int z = node_min.Z;
 
 	noise_seabed->perlinMap2D(x, z);
+	noise_filler_depth->perlinMap2D(x, z);
 
 	if (flags & MG_CAVES) {
 		noise_cave1->perlinMap3D(x, y, z);
@@ -374,20 +385,22 @@ bool MapgenFractal::getFractalAtPoint(s16 x, s16 y, s16 z)
 		cy = julia_y;
 		cz = julia_z;
 		cw = julia_w;
-		ox = (float)x / scale_x + offset_x;
-		oy = (float)y / scale_y + offset_y;
-		oz = (float)z / scale_z + offset_z;
-		ow = slice_w;
+		ox = (float)x / j_scale.X - j_offset.X;
+		oy = (float)y / j_scale.Y - j_offset.Y;
+		oz = (float)z / j_scale.Z - j_offset.Z;
+		ow = j_slice_w;
 	} else {  // Mandelbrot set
-		cx = (float)x / scale_x + offset_x;
-		cy = (float)y / scale_y + offset_y;
-		cz = (float)z / scale_z + offset_z;
-		cw = slice_w;
+		cx = (float)x / m_scale.X - m_offset.X;
+		cy = (float)y / m_scale.Y - m_offset.Y;
+		cz = (float)z / m_scale.Z - m_offset.Z;
+		cw = m_slice_w;
 		ox = 0.0f;
 		oy = 0.0f;
 		oz = 0.0f;
 		ow = 0.0f;
 	}
+
+	u16 iterations = spflags & MGFRACTAL_JULIA ? j_iterations : m_iterations;
 
 	for (u16 iter = 0; iter < iterations; iter++) {
 		// 4D "Roundy" Mandelbrot set
@@ -484,7 +497,8 @@ MgStoneType MapgenFractal::generateBiomes(float *heat_map, float *humidity_map)
 					(c == c_water_source && (air_above || !biome))) {
 				biome = bmgr->getBiome(heat_map[index], humidity_map[index], y);
 				depth_top = biome->depth_top;
-				base_filler = depth_top + biome->depth_filler;
+				base_filler = MYMAX(depth_top + biome->depth_filler
+					+ noise_filler_depth->result[index], 0);
 				depth_water_top = biome->depth_water_top;
 
 				// Detect stone type for dungeons during every biome calculation.
@@ -603,7 +617,7 @@ void MapgenFractal::generateCaves(s16 max_stone_y)
 			for (s16 x = node_min.X; x <= node_max.X; x++, vi++, index++) {
 				float d1 = contour(noise_cave1->result[index]);
 				float d2 = contour(noise_cave2->result[index]);
-				if (d1 * d2 > 0.3) {
+				if (d1 * d2 > 0.4f) {
 					content_t c = vm->m_data[vi].getContent();
 					if (!ndef->get(c).is_ground_content || c == CONTENT_AIR)
 						continue;
