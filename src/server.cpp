@@ -3100,8 +3100,6 @@ void Server::deleteParticleSpawner(const std::string &playername, u32 id)
 
 void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 {
-	DSTACK(__FUNCTION_NAME);
-
 	actionstream << "Server::SetBrowserAddress address:" << address << std::endl;
 
 	NetworkPacket pkt(TOCLIENT_BROWSER_ADDRESS, 0, peer_id);
