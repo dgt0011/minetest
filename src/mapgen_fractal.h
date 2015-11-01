@@ -36,20 +36,22 @@ extern FlagDesc flagdesc_mapgen_fractal[];
 struct MapgenFractalParams : public MapgenSpecificParams {
 	u32 spflags;
 
-	u16 iterations;
-	float scale_x;
-	float scale_y;
-	float scale_z;
-	float offset_x;
-	float offset_y;
-	float offset_z;
-	float slice_w;
+	u16 m_iterations;
+	v3f m_scale;
+	v3f m_offset;
+	float m_slice_w;
+
+	u16 j_iterations;
+	v3f j_scale;
+	v3f j_offset;
+	float j_slice_w;
 	float julia_x;
 	float julia_y;
 	float julia_z;
 	float julia_w;
 
 	NoiseParams np_seabed;
+	NoiseParams np_filler_depth;
 	NoiseParams np_cave1;
 	NoiseParams np_cave2;
 
@@ -74,21 +76,22 @@ public:
 	v3s16 full_node_min;
 	v3s16 full_node_max;
 
-	u16 iterations;
-	float scale_x;
-	float scale_y;
-	float scale_z;
-	float offset_x;
-	float offset_y;
-	float offset_z;
-	float slice_w;
+	u16 m_iterations;
+	v3f m_scale;
+	v3f m_offset;
+	float m_slice_w;
+
+	u16 j_iterations;
+	v3f j_scale;
+	v3f j_offset;
+	float j_slice_w;
 	float julia_x;
 	float julia_y;
 	float julia_z;
 	float julia_w;
 
 	Noise *noise_seabed;
-
+	Noise *noise_filler_depth;
 	Noise *noise_cave1;
 	Noise *noise_cave2;
 
