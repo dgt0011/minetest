@@ -148,7 +148,8 @@ Server::Server(
 		const std::string &path_world,
 		const SubgameSpec &gamespec,
 		bool simple_singleplayer_mode,
-		bool ipv6
+		bool ipv6,
+		ChatInterface *iface
 	):
 	m_path_world(path_world),
 	m_gamespec(gamespec),
@@ -175,6 +176,7 @@ Server::Server(
 	m_clients(&m_con),
 	m_shutdown_requested(false),
 	m_shutdown_ask_reconnect(false),
+	m_admin_chat(iface),
 	m_ignore_map_edit_events(false),
 	m_ignore_map_edit_events_peer_id(0),
 	m_next_sound_id(0)
@@ -318,6 +320,9 @@ Server::Server(
 	// Perform pending node name resolutions
 	m_nodedef->runNodeResolveCallbacks();
 
+	// unmap node names for connected nodeboxes
+	m_nodedef->mapNodeboxConnections();
+
 	// init the recipe hashes to speed up crafting
 	m_craftdef->initHashes(this);
 
@@ -342,10 +347,11 @@ Server::Server(
 	servermap->addEventReceiver(this);
 
 	// If file exists, load environment metadata
-	if(fs::PathExists(m_path_world + DIR_DELIM "env_meta.txt"))
-	{
-		infostream<<"Server: Loading environment metadata"<<std::endl;
+	if (fs::PathExists(m_path_world + DIR_DELIM "env_meta.txt")) {
+		infostream << "Server: Loading environment metadata" << std::endl;
 		m_env->loadMeta();
+	} else {
+		m_env->loadDefaultMeta();
 	}
 
 	// Add some test ActiveBlockModifiers to environment
@@ -576,6 +582,22 @@ void Server::AsyncRunStep(bool initial_step)
 	}
 
 	/*
+		Listen to the admin chat, if available
+	*/
+	if (m_admin_chat) {
+		if (!m_admin_chat->command_queue.empty()) {
+			MutexAutoLock lock(m_env_mutex);
+			while (!m_admin_chat->command_queue.empty()) {
+				ChatEvent *evt = m_admin_chat->command_queue.pop_frontNoEx();
+				handleChatInterfaceEvent(evt);
+				delete evt;
+			}
+		}
+		m_admin_chat->outgoing_queue.push_back(
+			new ChatEventTimeInfo(m_env->getGameTime(), m_env->getTimeOfDay()));
+	}
+
+	/*
 		Do background stuff
 	*/
 
@@ -653,15 +675,17 @@ void Server::AsyncRunStep(bool initial_step)
 		ScopeProfiler sp(g_profiler, "Server: checking added and deleted objs");
 
 		// Radius inside which objects are active
-		s16 radius = g_settings->getS16("active_object_send_range_blocks");
-		s16 player_radius = g_settings->getS16("player_transfer_distance");
+		static const s16 radius =
+			g_settings->getS16("active_object_send_range_blocks") * MAP_BLOCKSIZE;
 
-		if (player_radius == 0 && g_settings->exists("unlimited_player_transfer_distance") &&
-				!g_settings->getBool("unlimited_player_transfer_distance"))
+		// Radius inside which players are active
+		static const bool is_transfer_limited =
+			g_settings->exists("unlimited_player_transfer_distance") &&
+			!g_settings->getBool("unlimited_player_transfer_distance");
+		static const s16 player_transfer_dist = g_settings->getS16("player_transfer_distance") * MAP_BLOCKSIZE;
+		s16 player_radius = player_transfer_dist;
+		if (player_radius == 0 && is_transfer_limited)
 			player_radius = radius;
-
-		radius *= MAP_BLOCKSIZE;
-		player_radius *= MAP_BLOCKSIZE;
 
 		for (std::map<u16, RemoteClient*>::iterator
 			i = clients.begin();
@@ -966,8 +990,7 @@ void Server::AsyncRunStep(bool initial_step)
 	{
 		float &counter = m_emergethread_trigger_timer;
 		counter += dtime;
-		if(counter >= 2.0)
-		{
+		if (counter >= 2.0) {
 			counter = 0.0;
 
 			m_emerge->startThreads();
@@ -978,8 +1001,9 @@ void Server::AsyncRunStep(bool initial_step)
 	{
 		float &counter = m_savemap_timer;
 		counter += dtime;
-		if(counter >= g_settings->getFloat("server_map_save_interval"))
-		{
+		static const float save_interval =
+			g_settings->getFloat("server_map_save_interval");
+		if (counter >= save_interval) {
 			counter = 0.0;
 			MutexAutoLock lock(m_env_mutex);
 
@@ -1100,16 +1124,19 @@ PlayerSAO* Server::StageTwoClientInit(u16 peer_id)
 
 		// Send information about joining in chat
 		{
-			std::wstring name = L"unknown";
+			std::string name = "unknown";
 			Player *player = m_env->getPlayer(peer_id);
 			if(player != NULL)
-				name = narrow_to_wide(player->getName());
+				name = player->getName();
 
 			std::wstring message;
 			message += L"*** ";
-			message += name;
+			message += narrow_to_wide(name);
 			message += L" joined the game.";
 			SendChatMessage(PEER_ID_INEXISTENT,message);
+			if (m_admin_chat)
+				m_admin_chat->outgoing_queue.push_back(
+					new ChatEventNick(CET_NICK_ADD, name));
 		}
 	}
 	Address addr = getPeerAddress(player->peer_id);
@@ -1230,11 +1257,6 @@ void Server::setTimeOfDay(u32 time)
 {
 	m_env->setTimeOfDay(time);
 	m_time_of_day_send_timer = 0;
-}
-
-u32 Server::getTimeOfDay()
-{
-	return m_env->getTimeOfDay();
 }
 
 void Server::onMapEditEvent(MapEditEvent *event)
@@ -1434,6 +1456,16 @@ void Server::handlePeerChanges()
 			FATAL_ERROR("Invalid peer change event received!");
 			break;
 		}
+	}
+}
+
+void Server::printToConsoleOnly(const std::string &text)
+{
+	if (m_admin_chat) {
+		m_admin_chat->outgoing_queue.push_back(
+			new ChatEventChat("", utf8_to_wide(text)));
+	} else {
+		std::cout << text << std::endl;
 	}
 }
 
@@ -1641,7 +1673,8 @@ void Server::SendShowFormspecMessage(u16 peer_id, const std::string &formspec,
 // Spawns a particle on peer with peer_id
 void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f acceleration,
 				float expirationtime, float size, bool collisiondetection,
-				bool vertical, std::string texture)
+				bool collision_removal,
+				bool vertical, const std::string &texture)
 {
 	DSTACK(FUNCTION_NAME);
 
@@ -1651,6 +1684,7 @@ void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f accelerat
 			<< size << collisiondetection;
 	pkt.putLongString(texture);
 	pkt << vertical;
+	pkt << collision_removal;
 
 	if (peer_id != PEER_ID_INEXISTENT) {
 		Send(&pkt);
@@ -1663,7 +1697,8 @@ void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f accelerat
 // Adds a ParticleSpawner on peer with peer_id
 void Server::SendAddParticleSpawner(u16 peer_id, u16 amount, float spawntime, v3f minpos, v3f maxpos,
 	v3f minvel, v3f maxvel, v3f minacc, v3f maxacc, float minexptime, float maxexptime,
-	float minsize, float maxsize, bool collisiondetection, bool vertical, std::string texture, u32 id)
+	float minsize, float maxsize, bool collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture, u32 id)
 {
 	DSTACK(FUNCTION_NAME);
 
@@ -1676,6 +1711,7 @@ void Server::SendAddParticleSpawner(u16 peer_id, u16 amount, float spawntime, v3
 	pkt.putLongString(texture);
 
 	pkt << id << vertical;
+	pkt << collision_removal;
 
 	if (peer_id != PEER_ID_INEXISTENT) {
 		Send(&pkt);
@@ -1814,7 +1850,7 @@ void Server::SendPlayerHP(u16 peer_id)
 {
 	DSTACK(FUNCTION_NAME);
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	// In some rare case, if the player is disconnected
+	// In some rare case if the player is disconnected
 	// while Lua call l_punch, for example, this can be NULL
 	if (!playersao)
 		return;
@@ -2483,9 +2519,11 @@ void Server::sendDetachedInventories(u16 peer_id)
 void Server::DiePlayer(u16 peer_id)
 {
 	DSTACK(FUNCTION_NAME);
-
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	assert(playersao);
+	// In some rare cases this can be NULL -- if the player is disconnected
+	// when a Lua function modifies l_punch, for example
+	if (!playersao)
+		return;
 
 	infostream << "Server::DiePlayer(): Player "
 			<< playersao->getPlayer()->getName()
@@ -2539,7 +2577,7 @@ void Server::DenyAccessVerCompliant(u16 peer_id, u16 proto_ver, AccessDeniedCode
 		const std::string &str_reason, bool reconnect)
 {
 	if (proto_ver >= 25) {
-		SendAccessDenied(peer_id, reason, str_reason);
+		SendAccessDenied(peer_id, reason, str_reason, reconnect);
 	} else {
 		std::wstring wreason = utf8_to_wide(
 			reason == SERVER_ACCESSDENIED_CUSTOM_STRING ? str_reason :
@@ -2645,7 +2683,7 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 				PlayerSAO *playersao = player->getPlayerSAO();
 				assert(playersao);
 
-				m_script->on_leaveplayer(playersao);
+				m_script->on_leaveplayer(playersao, reason == CDR_TIMEOUT);
 
 				playersao->disconnected();
 			}
@@ -2670,9 +2708,13 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 					os << player->getName() << " ";
 				}
 
-				actionstream << player->getName() << " "
+				std::string name = player->getName();
+				actionstream << name << " "
 						<< (reason == CDR_TIMEOUT ? "times out." : "leaves game.")
 						<< " List of players: " << os.str() << std::endl;
+				if (m_admin_chat)
+					m_admin_chat->outgoing_queue.push_back(
+						new ChatEventNick(CET_NICK_REMOVE, name));
 			}
 		}
 		{
@@ -2703,6 +2745,102 @@ void Server::UpdateCrafting(Player* player)
 	sanity_check(plist);
 	sanity_check(plist->getSize() >= 1);
 	plist->changeItem(0, preview);
+}
+
+void Server::handleChatInterfaceEvent(ChatEvent *evt)
+{
+	if (evt->type == CET_NICK_ADD) {
+		// The terminal informed us of its nick choice
+		m_admin_nick = ((ChatEventNick *)evt)->nick;
+		if (!m_script->getAuth(m_admin_nick, NULL, NULL)) {
+			errorstream << "You haven't set up an account." << std::endl
+				<< "Please log in using the client as '"
+				<< m_admin_nick << "' with a secure password." << std::endl
+				<< "Until then, you can't execute admin tasks via the console," << std::endl
+				<< "and everybody can claim the user account instead of you," << std::endl
+				<< "giving them full control over this server." << std::endl;
+		}
+	} else {
+		assert(evt->type == CET_CHAT);
+		handleAdminChat((ChatEventChat *)evt);
+	}
+}
+
+std::wstring Server::handleChat(const std::string &name, const std::wstring &wname,
+	const std::wstring &wmessage, bool check_shout_priv,
+	u16 peer_id_to_avoid_sending)
+{
+	// If something goes wrong, this player is to blame
+	RollbackScopeActor rollback_scope(m_rollback,
+		std::string("player:") + name);
+
+	// Line to send
+	std::wstring line;
+	// Whether to send line to the player that sent the message, or to all players
+	bool broadcast_line = true;
+
+	// Run script hook
+	bool ate = m_script->on_chat_message(name,
+		wide_to_utf8(wmessage));
+	// If script ate the message, don't proceed
+	if (ate)
+		return L"";
+
+	// Commands are implemented in Lua, so only catch invalid
+	// commands that were not "eaten" and send an error back
+	if (wmessage[0] == L'/') {
+		std::wstring wcmd = wmessage.substr(1);
+		broadcast_line = false;
+		if (wcmd.length() == 0)
+			line += L"-!- Empty command";
+		else
+			line += L"-!- Invalid command: " + str_split(wcmd, L' ')[0];
+	} else {
+		if (check_shout_priv && !checkPriv(name, "shout")) {
+			line += L"-!- You don't have permission to shout.";
+			broadcast_line = false;
+		} else {
+			line += L"<";
+			line += wname;
+			line += L"> ";
+			line += wmessage;
+		}
+	}
+
+	/*
+		Tell calling method to send the message to sender
+	*/
+	if (!broadcast_line) {
+		return line;
+	} else {
+		/*
+			Send the message to others
+		*/
+		actionstream << "CHAT: " << wide_to_narrow(line) << std::endl;
+
+		std::vector<u16> clients = m_clients.getClientIDs();
+
+		for (u16 i = 0; i < clients.size(); i++) {
+			u16 cid = clients[i];
+			if (cid != peer_id_to_avoid_sending)
+				SendChatMessage(cid, line);
+		}
+	}
+	return L"";
+}
+
+void Server::handleAdminChat(const ChatEventChat *evt)
+{
+	std::string name = evt->nick;
+	std::wstring wname = utf8_to_wide(name);
+	std::wstring wmessage = evt->evt_msg;
+
+	std::wstring answer = handleChat(name, wname, wmessage);
+
+	// If asked to send answer to sender
+	if (!answer.empty()) {
+		m_admin_chat->outgoing_queue.push_back(new ChatEventChat("", answer));
+	}
 }
 
 RemoteClient* Server::getClient(u16 peer_id, ClientState state_min)
@@ -2836,9 +2974,14 @@ void Server::notifyPlayer(const char *name, const std::wstring &msg)
 	if (!m_env)
 		return;
 
+	if (m_admin_nick == name && !m_admin_nick.empty()) {
+		m_admin_chat->outgoing_queue.push_back(new ChatEventChat("", msg));
+	}
+
 	Player *player = m_env->getPlayer(name);
-	if (!player)
+	if (!player) {
 		return;
+	}
 
 	if (player->peer_id == PEER_ID_INEXISTENT)
 		return;
@@ -2903,7 +3046,8 @@ bool Server::hudSetFlags(Player *player, u32 flags, u32 mask)
 		return false;
 
 	SendHUDSetFlags(player->peer_id, flags, mask);
-	player->hud_flags = flags;
+	player->hud_flags &= ~mask;
+	player->hud_flags |= flags;
 
 	PlayerSAO* playersao = player->getPlayerSAO();
 
@@ -3020,7 +3164,8 @@ void Server::notifyPlayers(const std::wstring &msg)
 void Server::spawnParticle(const std::string &playername, v3f pos,
 	v3f velocity, v3f acceleration,
 	float expirationtime, float size, bool
-	collisiondetection, bool vertical, const std::string &texture)
+	collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture)
 {
 	// m_env will be NULL if the server is initializing
 	if (!m_env)
@@ -3035,13 +3180,15 @@ void Server::spawnParticle(const std::string &playername, v3f pos,
 	}
 
 	SendSpawnParticle(peer_id, pos, velocity, acceleration,
-			expirationtime, size, collisiondetection, vertical, texture);
+			expirationtime, size, collisiondetection,
+			collision_removal, vertical, texture);
 }
 
 u32 Server::addParticleSpawner(u16 amount, float spawntime,
 	v3f minpos, v3f maxpos, v3f minvel, v3f maxvel, v3f minacc, v3f maxacc,
 	float minexptime, float maxexptime, float minsize, float maxsize,
-	bool collisiondetection, bool vertical, const std::string &texture,
+	bool collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture,
 	const std::string &playername)
 {
 	// m_env will be NULL if the server is initializing
@@ -3056,23 +3203,11 @@ u32 Server::addParticleSpawner(u16 amount, float spawntime,
 		peer_id = player->peer_id;
 	}
 
-	u32 id = 0;
-	for(;;) // look for unused particlespawner id
-	{
-		id++;
-		if (std::find(m_particlespawner_ids.begin(),
-				m_particlespawner_ids.end(), id)
-				== m_particlespawner_ids.end())
-		{
-			m_particlespawner_ids.push_back(id);
-			break;
-		}
-	}
-
+	u32 id = m_env->addParticleSpawner(spawntime);
 	SendAddParticleSpawner(peer_id, amount, spawntime,
 		minpos, maxpos, minvel, maxvel, minacc, maxacc,
 		minexptime, maxexptime, minsize, maxsize,
-		collisiondetection, vertical, texture, id);
+		collisiondetection, collision_removal, vertical, texture, id);
 
 	return id;
 }
@@ -3091,17 +3226,12 @@ void Server::deleteParticleSpawner(const std::string &playername, u32 id)
 		peer_id = player->peer_id;
 	}
 
-	m_particlespawner_ids.erase(
-			std::remove(m_particlespawner_ids.begin(),
-			m_particlespawner_ids.end(), id),
-			m_particlespawner_ids.end());
+	m_env->deleteParticleSpawner(id);
 	SendDeleteParticleSpawner(peer_id, id);
 }
 
 void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 {
-	DSTACK(__FUNCTION_NAME);
-
 	actionstream << "Server::SetBrowserAddress address:" << address << std::endl;
 
 	NetworkPacket pkt(TOCLIENT_BROWSER_ADDRESS, 0, peer_id);
@@ -3113,6 +3243,11 @@ void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 	}
 }
 
+void Server::deleteParticleSpawnerAll(u32 id)
+{
+	m_env->deleteParticleSpawner(id);
+	SendDeleteParticleSpawner(PEER_ID_INEXISTENT, id);
+}
 
 Inventory* Server::createDetachedInventory(const std::string &name)
 {
@@ -3267,26 +3402,24 @@ v3f Server::findSpawnPos()
 		return nodeposf * BS;
 	}
 
-	s16 water_level = map.getWaterLevel();
-	s16 vertical_spawn_range = g_settings->getS16("vertical_spawn_range");
 	bool is_good = false;
 
 	// Try to find a good place a few times
-	for(s32 i = 0; i < 1000 && !is_good; i++) {
+	for(s32 i = 0; i < 4000 && !is_good; i++) {
 		s32 range = 1 + i;
 		// We're going to try to throw the player to this position
 		v2s16 nodepos2d = v2s16(
 				-range + (myrand() % (range * 2)),
 				-range + (myrand() % (range * 2)));
 
-		// Get ground height at point
-		s16 groundheight = map.findGroundLevel(nodepos2d);
-		// Don't go underwater or to high places
-		if (groundheight <= water_level ||
-				groundheight > water_level + vertical_spawn_range)
+		// Get spawn level at point
+		s16 spawn_level = m_emerge->getSpawnLevelAtPoint(nodepos2d);
+		// Continue if MAX_MAP_GENERATION_LIMIT was returned by
+		// the mapgen to signify an unsuitable spawn position
+		if (spawn_level == MAX_MAP_GENERATION_LIMIT)
 			continue;
 
-		v3s16 nodepos(nodepos2d.X, groundheight, nodepos2d.Y);
+		v3s16 nodepos(nodepos2d.X, spawn_level, nodepos2d.Y);
 
 		s32 air_count = 0;
 		for (s32 i = 0; i < 10; i++) {
@@ -3398,9 +3531,11 @@ void dedicated_server_loop(Server &server, bool &kill)
 
 	IntervalLimiter m_profiler_interval;
 
-	for(;;)
-	{
-		float steplen = g_settings->getFloat("dedicated_server_step");
+	static const float steplen = g_settings->getFloat("dedicated_server_step");
+	static const float profiler_print_interval =
+			g_settings->getFloat("profiler_print_interval");
+
+	for(;;) {
 		// This is kind of a hack but can be done like this
 		// because server.step() is very light
 		{
@@ -3422,10 +3557,7 @@ void dedicated_server_loop(Server &server, bool &kill)
 		/*
 			Profiler
 		*/
-		float profiler_print_interval =
-				g_settings->getFloat("profiler_print_interval");
-		if(profiler_print_interval != 0)
-		{
+		if (profiler_print_interval != 0) {
 			if(m_profiler_interval.step(steplen, profiler_print_interval))
 			{
 				infostream<<"Profiler:"<<std::endl;

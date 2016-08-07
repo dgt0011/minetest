@@ -29,6 +29,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "modalMenu.h"
 #include "guiTable.h"
 #include "network/networkprotocol.h"
+#include "client/joystick_controller.h"
+#include "util/string.h"
+#include "util/enriched_string.h"
 
 class IGameDef;
 class InventoryManager;
@@ -139,25 +142,53 @@ class GUIFormSpecMenu : public GUIModalMenu
 
 	struct ImageDrawSpec
 	{
-		ImageDrawSpec()
+		ImageDrawSpec():
+			parent_button(NULL)
 		{
 		}
 		ImageDrawSpec(const std::string &a_name,
-				v2s32 a_pos, v2s32 a_geom):
+				const std::string &a_item_name,
+				gui::IGUIButton *a_parent_button,
+				const v2s32 &a_pos, const v2s32 &a_geom):
 			name(a_name),
+			item_name(a_item_name),
+			parent_button(a_parent_button),
 			pos(a_pos),
-			geom(a_geom)
+			geom(a_geom),
+			scale(true)
 		{
-			scale = true;
 		}
 		ImageDrawSpec(const std::string &a_name,
-				v2s32 a_pos):
+				const std::string &a_item_name,
+				const v2s32 &a_pos, const v2s32 &a_geom):
 			name(a_name),
-			pos(a_pos)
+			item_name(a_item_name),
+			parent_button(NULL),
+			pos(a_pos),
+			geom(a_geom),
+			scale(true)
 		{
-			scale = false;
+		}
+		ImageDrawSpec(const std::string &a_name,
+				const v2s32 &a_pos, const v2s32 &a_geom):
+			name(a_name),
+			parent_button(NULL),
+			pos(a_pos),
+			geom(a_geom),
+			scale(true)
+		{
+		}
+		ImageDrawSpec(const std::string &a_name,
+				const v2s32 &a_pos):
+			name(a_name),
+			parent_button(NULL),
+			pos(a_pos),
+			scale(false)
+		{
 		}
 		std::string name;
+		std::string item_name;
+		gui::IGUIButton *parent_button;
 		v2s32 pos;
 		v2s32 geom;
 		bool scale;
@@ -169,12 +200,13 @@ class GUIFormSpecMenu : public GUIModalMenu
 		{
 		}
 		FieldSpec(const std::string &name, const std::wstring &label,
-				const std::wstring &fdeflt, int id) :
+				const std::wstring &default_text, int id) :
 			fname(name),
-			flabel(label),
-			fdefault(fdeflt),
 			fid(id)
 		{
+			//flabel = unescape_enriched(label);
+			flabel = label;
+			fdefault = unescape_enriched(default_text);
 			send = false;
 			ftype = f_Unknown;
 			is_exit = false;
@@ -207,18 +239,47 @@ class GUIFormSpecMenu : public GUIModalMenu
 		}
 		TooltipSpec(std::string a_tooltip, irr::video::SColor a_bgcolor,
 				irr::video::SColor a_color):
-			tooltip(a_tooltip),
 			bgcolor(a_bgcolor),
 			color(a_color)
 		{
+			//tooltip = unescape_enriched(utf8_to_wide(a_tooltip));
+			tooltip = utf8_to_wide(a_tooltip);
 		}
-		std::string tooltip;
+		std::wstring tooltip;
 		irr::video::SColor bgcolor;
 		irr::video::SColor color;
 	};
 
+	struct StaticTextSpec {
+		StaticTextSpec():
+			parent_button(NULL)
+		{
+		}
+		StaticTextSpec(const std::wstring &a_text,
+				const core::rect<s32> &a_rect):
+			rect(a_rect),
+			parent_button(NULL)
+		{
+			//text = unescape_enriched(a_text);
+			text = a_text;
+		}
+		StaticTextSpec(const std::wstring &a_text,
+				const core::rect<s32> &a_rect,
+				gui::IGUIButton *a_parent_button):
+			rect(a_rect),
+			parent_button(a_parent_button)
+		{
+			//text = unescape_enriched(a_text);
+			text = a_text;
+		}
+		std::wstring text;
+		core::rect<s32> rect;
+		gui::IGUIButton *parent_button;
+	};
+
 public:
 	GUIFormSpecMenu(irr::IrrlichtDevice* dev,
+			JoystickController *joystick,
 			gui::IGUIElement* parent, s32 id,
 			IMenuManager *menumgr,
 			InventoryManager *invmgr,
@@ -282,7 +343,7 @@ public:
 	void regenerateGui(v2u32 screensize);
 
 	ItemSpec getItemAtPos(v2s32 p) const;
-	void drawList(const ListDrawSpec &s, int phase);
+	void drawList(const ListDrawSpec &s, int phase,	bool &item_hovered);
 	void drawSelectedItem();
 	void drawMenu();
 	void updateSelectedItem();
@@ -295,6 +356,7 @@ public:
 	bool pausesGame() { return doPause; }
 
 	GUITable* getTable(const std::string &tablename);
+	std::vector<std::string>* getDropDownValues(const std::string &name);
 
 #ifdef __ANDROID__
 	bool getAndroidUIInput();
@@ -328,12 +390,16 @@ protected:
 	std::vector<ImageDrawSpec> m_itemimages;
 	std::vector<BoxDrawSpec> m_boxes;
 	std::vector<FieldSpec> m_fields;
+	std::vector<StaticTextSpec> m_static_texts;
 	std::vector<std::pair<FieldSpec,GUITable*> > m_tables;
 	std::vector<std::pair<FieldSpec,gui::IGUICheckBox*> > m_checkboxes;
 	std::map<std::string, TooltipSpec> m_tooltips;
 	std::vector<std::pair<FieldSpec,gui::IGUIScrollBar*> > m_scrollbars;
+	std::vector<std::pair<FieldSpec, std::vector<std::string> > > m_dropdowns;
 
 	ItemSpec *m_selected_item;
+	f32 m_timer1;
+	f32 m_timer2;
 	u32 m_selected_amount;
 	bool m_selected_dragging;
 
@@ -350,7 +416,7 @@ protected:
 	u32 m_tooltip_show_delay;
 	s32 m_hovered_time;
 	s32 m_old_tooltip_id;
-	std::string m_old_tooltip;
+	std::wstring m_old_tooltip;
 
 	bool m_rmouse_auto_place;
 
@@ -369,10 +435,11 @@ protected:
 	video::SColor m_default_tooltip_color;
 
 private:
-	IFormSource      *m_form_src;
-	TextDest         *m_text_dst;
-	unsigned int      m_formspec_version;
-	std::string       m_focused_element;
+	IFormSource        *m_form_src;
+	TextDest           *m_text_dst;
+	unsigned int        m_formspec_version;
+	std::string         m_focused_element;
+	JoystickController *m_joystick;
 
 	typedef struct {
 		bool explicit_size;
@@ -429,6 +496,8 @@ private:
 	bool parseVersionDirect(std::string data);
 	bool parseSizeDirect(parserData* data, std::string element);
 	void parseScrollBar(parserData* data, std::string element);
+
+	void tryClose();
 
 	/**
 	 * check if event is part of a double click

@@ -30,13 +30,16 @@ bool Database_Dummy::saveBlock(const v3s16 &pos, const std::string &data)
 	return true;
 }
 
-std::string Database_Dummy::loadBlock(const v3s16 &pos)
+void Database_Dummy::loadBlock(const v3s16 &pos, std::string *block)
 {
 	s64 i = getBlockAsInteger(pos);
 	std::map<s64, std::string>::iterator it = m_database.find(i);
-	if (it == m_database.end())
-		return "";
-	return it->second;
+	if (it == m_database.end()) {
+		*block = "";
+		return;
+	}
+
+	*block = it->second;
 }
 
 bool Database_Dummy::deleteBlock(const v3s16 &pos)
@@ -47,6 +50,7 @@ bool Database_Dummy::deleteBlock(const v3s16 &pos)
 
 void Database_Dummy::listAllLoadableBlocks(std::vector<v3s16> &dst)
 {
+	dst.reserve(m_database.size());
 	for (std::map<s64, std::string>::const_iterator x = m_database.begin();
 			x != m_database.end(); ++x) {
 		dst.push_back(getIntegerAsBlock(x->first));

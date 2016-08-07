@@ -43,7 +43,9 @@ public:
 	void testStrToIntConversion();
 	void testStringReplace();
 	void testStringAllowed();
+	void testAsciiPrintableHelper();
 	void testUTF8();
+	void testRemoveEscapes();
 	void testWrapRows();
 	void testIsNumber();
 	void testIsPowerOfTwo();
@@ -68,7 +70,9 @@ void TestUtilities::runTests(IGameDef *gamedef)
 	TEST(testStrToIntConversion);
 	TEST(testStringReplace);
 	TEST(testStringAllowed);
+	TEST(testAsciiPrintableHelper);
 	TEST(testUTF8);
+	TEST(testRemoveEscapes);
 	TEST(testWrapRows);
 	TEST(testIsNumber);
 	TEST(testIsPowerOfTwo);
@@ -232,11 +236,40 @@ void TestUtilities::testStringAllowed()
 	UASSERT(string_allowed_blacklist("hello123", "123") == false);
 }
 
+void TestUtilities::testAsciiPrintableHelper()
+{
+	UASSERT(IS_ASCII_PRINTABLE_CHAR('e') == true);
+	UASSERT(IS_ASCII_PRINTABLE_CHAR('\0') == false);
+
+	// Ensures that there is no cutting off going on...
+	// If there were, 331 would be cut to 75 in this example
+	// and 73 is a valid ASCII char.
+	int ch = 331;
+	UASSERT(IS_ASCII_PRINTABLE_CHAR(ch) == false);
+}
+
 void TestUtilities::testUTF8()
 {
 	UASSERT(wide_to_utf8(utf8_to_wide("")) == "");
 	UASSERT(wide_to_utf8(utf8_to_wide("the shovel dug a crumbly node!"))
 		== "the shovel dug a crumbly node!");
+}
+
+void TestUtilities::testRemoveEscapes()
+{
+	UASSERT(unescape_enriched<wchar_t>(
+		L"abc\x1bXdef") == L"abcdef");
+	UASSERT(unescape_enriched<wchar_t>(
+		L"abc\x1b(escaped)def") == L"abcdef");
+	UASSERT(unescape_enriched<wchar_t>(
+		L"abc\x1b((escaped with parenthesis\\))def") == L"abcdef");
+	UASSERT(unescape_enriched<wchar_t>(
+		L"abc\x1b(incomplete") == L"abc");
+	UASSERT(unescape_enriched<wchar_t>(
+		L"escape at the end\x1b") == L"escape at the end");
+	// Nested escapes not supported
+	UASSERT(unescape_enriched<wchar_t>(
+		L"abc\x1b(outer \x1b(inner escape)escape)def") == L"abcescape)def");
 }
 
 void TestUtilities::testWrapRows()

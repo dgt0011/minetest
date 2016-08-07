@@ -113,6 +113,9 @@ private:
 	// get_gametime()
 	static int l_get_gametime(lua_State *L);
 
+	// get_day_count() -> int
+	static int l_get_day_count(lua_State *L);
+
 	// find_node_near(pos, radius, nodenames) -> pos or nil
 	// nodenames: eg. {"ignore", "group:tree"} or "default:dirt"
 	static int l_find_node_near(lua_State *L);
@@ -170,10 +173,11 @@ private:
 
 public:
 	static void Initialize(lua_State *L, int top);
+
+	static struct EnumString es_ClearObjectsMode[];
 };
 
-class LuaABM : public ActiveBlockModifier
-{
+class LuaABM : public ActiveBlockModifier {
 private:
 	int m_id;
 
@@ -217,6 +221,32 @@ public:
 	}
 	virtual void trigger(ServerEnvironment *env, v3s16 p, MapNode n,
 			u32 active_object_count, u32 active_object_count_wider);
+};
+
+class LuaLBM : public LoadingBlockModifierDef
+{
+private:
+	int m_id;
+public:
+	LuaLBM(lua_State *L, int id,
+			const std::set<std::string> &trigger_contents,
+			const std::string &name,
+			bool run_at_every_load):
+		m_id(id)
+	{
+		this->run_at_every_load = run_at_every_load;
+		this->trigger_contents = trigger_contents;
+		this->name = name;
+	}
+	virtual void trigger(ServerEnvironment *env, v3s16 p, MapNode n);
+};
+
+struct ScriptCallbackState {
+	GameScripting *script;
+	int callback_ref;
+	int args_ref;
+	unsigned int refcount;
+	std::string origin;
 };
 
 #endif /* L_ENV_H_ */
