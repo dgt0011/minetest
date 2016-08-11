@@ -40,6 +40,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "mapnode.h"
 #include "mapblock.h"
 #include "threading/mutex.h"
+#include "threading/atomic.h"
 #include "network/networkprotocol.h" // for AccessDeniedCode
 
 class ServerEnvironment;
@@ -92,11 +93,9 @@ public:
 	void setTimeOfDaySpeed(float speed);
 	float getTimeOfDaySpeed();
 
-	void setDayNightRatioOverride(bool enable, u32 value)
-	{
-		m_enable_day_night_ratio_override = enable;
-		m_day_night_ratio_override = value;
-	}
+	void setDayNightRatioOverride(bool enable, u32 value);
+
+	u32 getDayCount();
 
 	// counter used internally when triggering ABMs
 	u32 m_added_objects;
@@ -105,23 +104,27 @@ protected:
 	// peer_ids in here should be unique, except that there may be many 0s
 	std::vector<Player*> m_players;
 
+	GenericAtomic<float> m_time_of_day_speed;
 
 	/*
-	 *  Below: values under m_time_lock
-	 */
+	 * Below: values managed by m_time_lock
+	*/
 	// Time of day in milli-hours (0-23999); determines day and night
 	u32 m_time_of_day;
 	// Time of day in 0...1
 	float m_time_of_day_f;
-	float m_time_of_day_speed;
-	// Used to buffer dtime for adding to m_time_of_day
-	float m_time_counter;
+	// Stores the skew created by the float -> u32 conversion
+	// to be applied at next conversion, so that there is no real skew.
+	float m_time_conversion_skew;
 	// Overriding the day-night ratio is useful for custom sky visuals
 	bool m_enable_day_night_ratio_override;
 	u32 m_day_night_ratio_override;
+	// Days from the server start, accounts for time shift
+	// in game (e.g. /time or bed usage)
+	Atomic<u32> m_day_count;
 	/*
-	 * Above: values under m_time_lock
-	 */
+	 * Above: values managed by m_time_lock
+	*/
 
 	/* TODO: Add a callback function so these can be updated when a setting
 	 *       changes.  At this point in time it doesn't matter (e.g. /set
@@ -133,6 +136,9 @@ protected:
 	 *       a later release.
 	 */
 	bool m_cache_enable_shaders;
+	float m_cache_active_block_mgmt_interval;
+	float m_cache_abm_interval;
+	float m_cache_nodetimer_interval;
 
 private:
 	Mutex m_time_lock;
@@ -141,7 +147,7 @@ private:
 };
 
 /*
-	Active block modifier interface.
+	{Active, Loading} block modifier interface.
 
 	These are fed into ServerEnvironment at initialization time;
 	ServerEnvironment handles deleting them.
@@ -179,6 +185,77 @@ struct ABMWithState
 	ABMWithState(ActiveBlockModifier *abm_);
 };
 
+struct LoadingBlockModifierDef
+{
+	// Set of contents to trigger on
+	std::set<std::string> trigger_contents;
+	std::string name;
+	bool run_at_every_load;
+
+	virtual ~LoadingBlockModifierDef() {}
+	virtual void trigger(ServerEnvironment *env, v3s16 p, MapNode n){};
+};
+
+struct LBMContentMapping
+{
+	typedef std::map<content_t, std::vector<LoadingBlockModifierDef *> > container_map;
+	container_map map;
+
+	std::vector<LoadingBlockModifierDef *> lbm_list;
+
+	// Needs to be separate method (not inside destructor),
+	// because the LBMContentMapping may be copied and destructed
+	// many times during operation in the lbm_lookup_map.
+	void deleteContents();
+	void addLBM(LoadingBlockModifierDef *lbm_def, IGameDef *gamedef);
+	const std::vector<LoadingBlockModifierDef *> *lookup(content_t c) const;
+};
+
+class LBMManager
+{
+public:
+	LBMManager():
+		m_query_mode(false)
+	{}
+
+	~LBMManager();
+
+	// Don't call this after loadIntroductionTimes() ran.
+	void addLBMDef(LoadingBlockModifierDef *lbm_def);
+
+	void loadIntroductionTimes(const std::string &times,
+		IGameDef *gamedef, u32 now);
+
+	// Don't call this before loadIntroductionTimes() ran.
+	std::string createIntroductionTimesString();
+
+	// Don't call this before loadIntroductionTimes() ran.
+	void applyLBMs(ServerEnvironment *env, MapBlock *block, u32 stamp);
+
+	// Warning: do not make this std::unordered_map, order is relevant here
+	typedef std::map<u32, LBMContentMapping> lbm_lookup_map;
+
+private:
+	// Once we set this to true, we can only query,
+	// not modify
+	bool m_query_mode;
+
+	// For m_query_mode == false:
+	// The key of the map is the LBM def's name.
+	// TODO make this std::unordered_map
+	std::map<std::string, LoadingBlockModifierDef *> m_lbm_defs;
+
+	// For m_query_mode == true:
+	// The key of the map is the LBM def's first introduction time.
+	lbm_lookup_map m_lbm_lookup;
+
+	// Returns an iterator to the LBMs that were introduced
+	// after the given time. This is guaranteed to return
+	// valid values for everything
+	lbm_lookup_map::const_iterator getLBMsIntroducedAfter(u32 time)
+	{ return m_lbm_lookup.lower_bound(time); }
+};
+
 /*
 	List of active blocks, used by ServerEnvironment
 */
@@ -203,6 +280,18 @@ public:
 	std::set<v3s16> m_forceloaded_list;
 
 private:
+};
+
+/*
+	Operation mode for ServerEnvironment::clearObjects()
+*/
+enum ClearObjectsMode {
+	// Load and go through every mapblock, clearing objects
+	CLEAR_OBJECTS_MODE_FULL,
+
+	// Clear objects immediately in loaded mapblocks;
+	// clear objects in unloaded mapblocks only when the mapblocks are next activated.
+	CLEAR_OBJECTS_MODE_QUICK,
 };
 
 /*
@@ -244,6 +333,12 @@ public:
 	*/
 	void saveMeta();
 	void loadMeta();
+	// to be called instead of loadMeta if
+	// env_meta.txt doesn't exist (e.g. new world)
+	void loadDefaultMeta();
+
+	u32 addParticleSpawner(float exptime);
+	void deleteParticleSpawner(u32 id);
 
 	/*
 		External ActiveObject interface
@@ -302,11 +397,12 @@ public:
 	void activateBlock(MapBlock *block, u32 additional_dtime=0);
 
 	/*
-		ActiveBlockModifiers
+		{Active,Loading}BlockModifiers
 		-------------------------------------------
 	*/
 
 	void addActiveBlockModifier(ActiveBlockModifier *abm);
+	void addLoadingBlockModifierDef(LoadingBlockModifierDef *lbm);
 
 	/*
 		Other stuff
@@ -321,8 +417,8 @@ public:
 	// Find all active objects inside a radius around a point
 	void getObjectsInsideRadius(std::vector<u16> &objects, v3f pos, float radius);
 
-	// Clear all objects, loading and going through every MapBlock
-	void clearAllObjects();
+	// Clear objects, loading and going through every MapBlock
+	void clearObjects(ClearObjectsMode mode);
 
 	// This makes stuff happen
 	void step(f32 dtime);
@@ -412,12 +508,21 @@ private:
 	u32 m_game_time;
 	// A helper variable for incrementing the latter
 	float m_game_time_fraction_counter;
+	// Time of last clearObjects call (game time).
+	// When a mapblock older than this is loaded, its objects are cleared.
+	u32 m_last_clear_objects_time;
+	// Active block modifiers
 	std::vector<ABMWithState> m_abms;
+	LBMManager m_lbm_mgr;
 	// An interval for generally sending object positions and stuff
 	float m_recommended_send_interval;
 	// Estimate for general maximum lag as determined by server.
 	// Can raise to high values like 15s with eg. map generation mods.
 	float m_max_lag_estimate;
+
+	// Particles
+	IntervalLimiter m_particle_management_interval;
+	std::map<u32, float> m_particle_spawners;
 };
 
 #ifndef SERVER

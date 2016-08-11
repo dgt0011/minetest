@@ -25,13 +25,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "serialization.h"
 #include "json/json.h"
 #include "cpp_api/s_security.h"
-#include "areastore.h"
 #include "porting.h"
+#include "debug.h"
 #include "log.h"
 #include "tool.h"
 #include "filesys.h"
 #include "settings.h"
 #include "util/auth.h"
+#include "util/base64.h"
 #include <algorithm>
 
 // log([level,] text)
@@ -74,9 +75,9 @@ int ModApiUtil::l_get_us_time(lua_State *L)
 }
 
 #define CHECK_SECURE_SETTING(L, name) \
-	if (name.compare(0, 7, "secure.") == 0) {\
-		lua_pushliteral(L, "Attempt to set secure setting.");\
-		lua_error(L);\
+	if (ScriptApiSecurity::isSecure(L) && \
+			name.compare(0, 7, "secure.") == 0) { \
+		throw LuaError("Attempt to set secure setting."); \
 	}
 
 // setting_set(name, value)
@@ -161,8 +162,14 @@ int ModApiUtil::l_parse_json(lua_State *L)
 		if (!reader.parse(stream, root)) {
 			errorstream << "Failed to parse json data "
 				<< reader.getFormattedErrorMessages();
-			errorstream << "data: \"" << jsonstr << "\""
-				<< std::endl;
+			size_t jlen = strlen(jsonstr);
+			if (jlen > 100) {
+				errorstream << "Data (" << jlen
+					<< " bytes) printed to warningstream." << std::endl;
+				warningstream << "data: \"" << jsonstr << "\"" << std::endl;
+			} else {
+				errorstream << "data: \"" << jsonstr << "\"" << std::endl;
+			}
 			lua_pushnil(L);
 			return 1;
 		}
@@ -239,13 +246,42 @@ int ModApiUtil::l_get_hit_params(lua_State *L)
 	return 1;
 }
 
+// check_password_entry(name, entry, password)
+int ModApiUtil::l_check_password_entry(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	std::string name = luaL_checkstring(L, 1);
+	std::string entry = luaL_checkstring(L, 2);
+	std::string password = luaL_checkstring(L, 3);
+
+	if (base64_is_valid(entry)) {
+		std::string hash = translate_password(name, password);
+		lua_pushboolean(L, hash == entry);
+		return 1;
+	}
+
+	std::string salt;
+	std::string verifier;
+
+	if (!decode_srp_verifier_and_salt(entry, &verifier, &salt)) {
+		// invalid format
+		warningstream << "Invalid password format for " << name << std::endl;
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	std::string gen_verifier = generate_srp_verifier(name, password, salt);
+
+	lua_pushboolean(L, gen_verifier == verifier);
+	return 1;
+}
+
 // get_password_hash(name, raw_password)
 int ModApiUtil::l_get_password_hash(lua_State *L)
 {
 	NO_MAP_LOCK_REQUIRED;
 	std::string name = luaL_checkstring(L, 1);
 	std::string raw_password = luaL_checkstring(L, 2);
-	std::string hash = translatePassword(name, raw_password);
+	std::string hash = translate_password(name, raw_password);
 	lua_pushstring(L, hash.c_str());
 	return 1;
 }
@@ -314,6 +350,34 @@ int ModApiUtil::l_decompress(lua_State *L)
 	return 1;
 }
 
+// encode_base64(string)
+int ModApiUtil::l_encode_base64(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+
+	size_t size;
+	const char *data = luaL_checklstring(L, 1, &size);
+
+	std::string out = base64_encode((const unsigned char *)(data), size);
+
+	lua_pushlstring(L, out.data(), out.size());
+	return 1;
+}
+
+// decode_base64(string)
+int ModApiUtil::l_decode_base64(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+
+	size_t size;
+	const char *data = luaL_checklstring(L, 1, &size);
+
+	std::string out = base64_decode(std::string(data, size));
+
+	lua_pushlstring(L, out.data(), out.size());
+	return 1;
+}
+
 // mkdir(path)
 int ModApiUtil::l_mkdir(lua_State *L)
 {
@@ -351,22 +415,46 @@ int ModApiUtil::l_get_dir_list(lua_State *L)
 int ModApiUtil::l_request_insecure_environment(lua_State *L)
 {
 	NO_MAP_LOCK_REQUIRED;
+
+	// Just return _G if security is disabled
 	if (!ScriptApiSecurity::isSecure(L)) {
 		lua_getglobal(L, "_G");
 		return 1;
 	}
+
+	// We have to make sure that this function is being called directly by
+	// a mod, otherwise a malicious mod could override this function and
+	// steal its return value.
+	lua_Debug info;
+	// Make sure there's only one item below this function on the stack...
+	if (lua_getstack(L, 2, &info)) {
+		return 0;
+	}
+	FATAL_ERROR_IF(!lua_getstack(L, 1, &info), "lua_getstack() failed");
+	FATAL_ERROR_IF(!lua_getinfo(L, "S", &info), "lua_getinfo() failed");
+	// ...and that that item is the main file scope.
+	if (strcmp(info.what, "main") != 0) {
+		return 0;
+	}
+
+	// Get mod name
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_CURRENT_MOD_NAME);
 	if (!lua_isstring(L, -1)) {
-		lua_pushnil(L);
-		return 1;
+		return 0;
 	}
+
+	// Check secure.trusted_mods
 	const char *mod_name = lua_tostring(L, -1);
 	std::string trusted_mods = g_settings->get("secure.trusted_mods");
+	trusted_mods.erase(std::remove(trusted_mods.begin(),
+			trusted_mods.end(), ' '), trusted_mods.end());
 	std::vector<std::string> mod_list = str_split(trusted_mods, ',');
-	if (std::find(mod_list.begin(), mod_list.end(), mod_name) == mod_list.end()) {
-		lua_pushnil(L);
-		return 1;
+	if (std::find(mod_list.begin(), mod_list.end(), mod_name) ==
+			mod_list.end()) {
+		return 0;
 	}
+
+	// Push insecure environment
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_GLOBALS_BACKUP);
 	return 1;
 }
@@ -390,6 +478,7 @@ void ModApiUtil::Initialize(lua_State *L, int top)
 	API_FCT(get_dig_params);
 	API_FCT(get_hit_params);
 
+	API_FCT(check_password_entry);
 	API_FCT(get_password_hash);
 
 	API_FCT(is_yes);
@@ -403,6 +492,9 @@ void ModApiUtil::Initialize(lua_State *L, int top)
 	API_FCT(get_dir_list);
 
 	API_FCT(request_insecure_environment);
+
+	API_FCT(encode_base64);
+	API_FCT(decode_base64);
 }
 
 void ModApiUtil::InitializeAsync(AsyncEngine& engine)
@@ -429,5 +521,8 @@ void ModApiUtil::InitializeAsync(AsyncEngine& engine)
 
 	ASYNC_API_FCT(mkdir);
 	ASYNC_API_FCT(get_dir_list);
+
+	ASYNC_API_FCT(encode_base64);
+	ASYNC_API_FCT(decode_base64);
 }
 

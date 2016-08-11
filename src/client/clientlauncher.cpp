@@ -32,6 +32,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "guiEngine.h"
 #include "player.h"
 #include "fontengine.h"
+#include "joystick_controller.h"
 #include "clientlauncher.h"
 
 /* mainmenumanager.h
@@ -201,6 +202,9 @@ bool ClientLauncher::run(GameParams &game_params, const Settings &cmd_args)
 			bool game_has_run = launch_game(error_message, reconnect_requested,
 				game_params, cmd_args);
 
+			// Reset the reconnect_requested flag
+			reconnect_requested = false;
+
 			// If skip_main_menu, we only want to startup once
 			if (skip_main_menu && !first_loop)
 				break;
@@ -336,6 +340,7 @@ bool ClientLauncher::launch_game(std::string &error_message,
 	MainMenuData menudata;
 	menudata.address                         = address;
 	menudata.name                            = playername;
+	menudata.password                        = password;
 	menudata.port                            = itos(game_params.socket_port);
 	menudata.script_data.errormessage        = error_message;
 	menudata.script_data.reconnect_requested = reconnect_requested;
@@ -495,7 +500,8 @@ void ClientLauncher::main_menu(MainMenuData *menudata)
 #endif
 
 	/* show main menu */
-	GUIEngine mymenu(device, guiroot, &g_menumgr, smgr, menudata, *kill);
+	GUIEngine mymenu(device, &input->joystick, guiroot,
+		&g_menumgr, smgr, menudata, *kill);
 
 	smgr->clear();	/* leave scene manager in a clean state */
 }
@@ -511,6 +517,9 @@ bool ClientLauncher::create_engine_device()
 	bool vsync = g_settings->getBool("vsync");
 	u16 bits = g_settings->getU16("fullscreen_bpp");
 	u16 fsaa = g_settings->getU16("fsaa");
+
+	// stereo buffer required for pageflip stereo
+	bool stereo_buffer = g_settings->get("3d_mode") == "pageflip";
 
 	// Determine driver
 	video::E_DRIVER_TYPE driverType = video::EDT_OPENGL;
@@ -537,9 +546,11 @@ bool ClientLauncher::create_engine_device()
 	params.AntiAlias     = fsaa;
 	params.Fullscreen    = fullscreen;
 	params.Stencilbuffer = false;
+	params.Stereobuffer  = stereo_buffer;
 	params.Vsync         = vsync;
 	params.EventReceiver = receiver;
 	params.HighPrecisionFPU = g_settings->getBool("high_precision_fpu");
+	params.ZBufferBits   = 24;
 #ifdef __ANDROID__
 	params.PrivateData = porting::app_global;
 	params.OGLES2ShaderPath = std::string(porting::path_user + DIR_DELIM +
@@ -549,6 +560,22 @@ bool ClientLauncher::create_engine_device()
 	device = createDeviceEx(params);
 
 	if (device) {
+		if (g_settings->getBool("enable_joysticks")) {
+			irr::core::array<irr::SJoystickInfo> infos;
+			std::vector<irr::SJoystickInfo> joystick_infos;
+			// Make sure this is called maximum once per
+			// irrlicht device, otherwise it will give you
+			// multiple events for the same joystick.
+			if (device->activateJoysticks(infos)) {
+				infostream << "Joystick support enabled" << std::endl;
+				joystick_infos.reserve(infos.size());
+				for (u32 i = 0; i < infos.size(); i++) {
+					joystick_infos.push_back(infos[i]);
+				}
+			} else {
+				errorstream << "Could not activate joystick support." << std::endl;
+			}
+		}
 		porting::initIrrlicht(device);
 	}
 
@@ -680,7 +707,7 @@ bool ClientLauncher::print_video_modes()
 		return false;
 	}
 
-	dstream << _("Available video modes (WxHxD):") << std::endl;
+	std::cout << _("Available video modes (WxHxD):") << std::endl;
 
 	video::IVideoModeList *videomode_list = nulldevice->getVideoModeList();
 
@@ -691,14 +718,14 @@ bool ClientLauncher::print_video_modes()
 		for (s32 i = 0; i < videomode_count; ++i) {
 			videomode_res = videomode_list->getVideoModeResolution(i);
 			videomode_depth = videomode_list->getVideoModeDepth(i);
-			dstream << videomode_res.Width << "x" << videomode_res.Height
+			std::cout << videomode_res.Width << "x" << videomode_res.Height
 			        << "x" << videomode_depth << std::endl;
 		}
 
-		dstream << _("Active video mode (WxHxD):") << std::endl;
+		std::cout << _("Active video mode (WxHxD):") << std::endl;
 		videomode_res = videomode_list->getDesktopResolution();
 		videomode_depth = videomode_list->getDesktopDepth();
-		dstream << videomode_res.Width << "x" << videomode_res.Height
+		std::cout << videomode_res.Width << "x" << videomode_res.Height
 		        << "x" << videomode_depth << std::endl;
 
 	}

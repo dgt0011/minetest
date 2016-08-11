@@ -38,7 +38,10 @@ dofile(menupath .. DIR_DELIM .. "common.lua")
 dofile(menupath .. DIR_DELIM .. "gamemgr.lua")
 dofile(menupath .. DIR_DELIM .. "modmgr.lua")
 dofile(menupath .. DIR_DELIM .. "store.lua")
+dofile(menupath .. DIR_DELIM .. "textures.lua")
+
 dofile(menupath .. DIR_DELIM .. "dlg_config_world.lua")
+dofile(menupath .. DIR_DELIM .. "dlg_settings_advanced.lua")
 
 if iseidy then
 	tabtype = "eidy_"
@@ -46,26 +49,41 @@ else
 	tabtype = ""
 end
 dofile(menupath .. DIR_DELIM .. "tab_" .. tabtype .. "credits.lua")
+
 dofile(menupath .. DIR_DELIM .. "tab_mods.lua")
 dofile(menupath .. DIR_DELIM .. "tab_settings.lua")
-
  
 if PLATFORM ~= "Android" then
 	dofile(menupath .. DIR_DELIM .. "dlg_create_world.lua")
 	dofile(menupath .. DIR_DELIM .. "dlg_delete_mod.lua")
 	dofile(menupath .. DIR_DELIM .. "dlg_delete_world.lua")
 	dofile(menupath .. DIR_DELIM .. "dlg_rename_modpack.lua")
-	
+end
+
 	dofile(menupath .. DIR_DELIM .. "tab_".. tabtype .."multiplayer.lua")
 	dofile(menupath .. DIR_DELIM .. "tab_".. tabtype .."server.lua")
 
 	dofile(menupath .. DIR_DELIM .. "tab_singleplayer.lua")
 	dofile(menupath .. DIR_DELIM .. "tab_texturepacks.lua")
 	dofile(menupath .. DIR_DELIM .. "textures.lua")
-elseif iseidy then
+	
+if iseidy then
 	dofile(menupath .. DIR_DELIM .. "tab_eidy_main.lua")
+end
+
+local tabs = {}
+
+tabs.settings = dofile(menupath .. DIR_DELIM .. "tab_settings.lua")
+tabs.mods = dofile(menupath .. DIR_DELIM .. "tab_mods.lua")
+tabs.credits = dofile(menupath .. DIR_DELIM .. "tab_" .. tabtype .. "credits.lua")
+
+if PLATFORM == "Android" then
+	tabs.simple_main = dofile(menupath .. DIR_DELIM .. "tab_simple_main.lua")
 else
-	dofile(menupath .. DIR_DELIM .. "tab_simple_main.lua")
+	tabs.singleplayer = dofile(menupath .. DIR_DELIM .. "tab_singleplayer.lua")
+	tabs.multiplayer = dofile(menupath .. DIR_DELIM .. "tab_".. tabtype .."multiplayer.lua")
+	tabs.server = dofile(menupath .. DIR_DELIM .. "tab_".. tabtype .."server.lua")
+	tabs.texturepacks = dofile(menupath .. DIR_DELIM .. "tab_texturepacks.lua")
 end
  
 --------------------------------------------------------------------------------
@@ -81,8 +99,34 @@ local function init_globals()
 	-- Init gamedata
 	gamedata.worldindex = 0
 
+	if PLATFORM == "Android" then
+		local world_list = core.get_worlds()
+		local world_index
 
-	if PLATFORM ~= "Android" then
+		local found_singleplayerworld = false
+		for i, world in ipairs(world_list) do
+			if world.name == "singleplayerworld" then
+				found_singleplayerworld = true
+				world_index = i
+				break
+			end
+		end
+
+		if not found_singleplayerworld then
+			core.create_world("singleplayerworld", 1)
+
+			world_list = core.get_worlds()
+
+			for i, world in ipairs(world_list) do
+				if world.name == "singleplayerworld" then
+					world_index = i
+					break
+				end
+			end
+		end
+
+		gamedata.worldindex = world_index
+	else
 		menudata.worldlist = filterlist.create(
 			core.get_worlds,
 			compare_worlds,
@@ -101,7 +145,7 @@ local function init_globals()
 
 		if not core.setting_get("menu_last_game") then
 			local default_game = core.setting_get("default_game") or "minetest"
-			core.setting_set("menu_last_game", default_game )
+			core.setting_set("menu_last_game", default_game)
 		end
 
 		mm_texture.init()
@@ -174,11 +218,30 @@ local function init_globals()
 	end
 	tv_main:add(tab_credits)
 
-	tv_main:set_global_event_handler(main_event_handler)
+	end
 
+	-- Create main tabview
+	local tv_main = tabview_create("maintab", {x = 12, y = 5.2}, {x = 0, y = 0})
+
+	if PLATFORM == "Android" then
+		tv_main:add(tabs.simple_main)
+		tv_main:add(tabs.settings)
+	else
+		tv_main:set_autosave_tab(true)
+		tv_main:add(tabs.singleplayer)
+		tv_main:add(tabs.multiplayer)
+		tv_main:add(tabs.server)
+		tv_main:add(tabs.settings)
+		tv_main:add(tabs.texturepacks)
+	end
+
+	tv_main:add(tabs.mods)
+	tv_main:add(tabs.credits)
+
+	tv_main:set_global_event_handler(main_event_handler)
 	tv_main:set_fixed_size(false)
 
-	if not (PLATFORM == "Android") then
+	if PLATFORM ~= "Android" then
 		tv_main:set_tab(core.setting_get("maintab_LAST"))
 	end
 	ui.set_default("maintab")
@@ -186,9 +249,9 @@ local function init_globals()
 
 	-- Create modstore ui
 	if PLATFORM == "Android" then
-		modstore.init({x=12, y=6}, 3, 2)
+		modstore.init({x = 12, y = 6}, 3, 2)
 	else
-		modstore.init({x=12, y=8}, 4, 3)
+		modstore.init({x = 12, y = 8}, 4, 3)
 	end
 
 	ui.update()

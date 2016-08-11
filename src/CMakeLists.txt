@@ -155,10 +155,69 @@ if(ENABLE_FREETYPE)
 	endif()
 endif(ENABLE_FREETYPE)
 
-
-find_package(Lua REQUIRED)
+# LuaJIT
+option(ENABLE_LUAJIT "Enable LuaJIT support" TRUE)
+set(USE_LUAJIT FALSE)
+if(ENABLE_LUAJIT)
+	find_package(LuaJIT)
+	if(LUAJIT_FOUND)
+		set(USE_LUAJIT TRUE)
+	endif(LUAJIT_FOUND)
+else()
+	message (STATUS "LuaJIT detection disabled! (ENABLE_LUAJIT=0)")
+endif()
+if(NOT USE_LUAJIT)
+	message(STATUS "LuaJIT not found, using bundled Lua.")
+	set(LUA_LIBRARY "lua")
+	set(LUA_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lua/src")
+	add_subdirectory(lua)
+endif()
 
 find_package(GMP REQUIRED)
+
+option(ENABLE_CURSES "Enable ncurses console" TRUE)
+set(USE_CURSES FALSE)
+
+if(ENABLE_CURSES)
+	find_package(Ncursesw)
+	if(CURSES_FOUND)
+		set(USE_CURSES TRUE)
+		message(STATUS "ncurses console enabled.")
+		include_directories(${CURSES_INCLUDE_DIRS})
+	else()
+		message(STATUS "ncurses not found!")
+	endif()
+endif(ENABLE_CURSES)
+
+option(ENABLE_POSTGRESQL "Enable PostgreSQL backend" TRUE)
+set(USE_POSTGRESQL FALSE)
+
+if(ENABLE_POSTGRESQL)
+	find_program(POSTGRESQL_CONFIG_EXECUTABLE pg_config DOC "pg_config")
+	find_library(POSTGRESQL_LIBRARY pq)
+	if(POSTGRESQL_CONFIG_EXECUTABLE)
+		execute_process(COMMAND ${POSTGRESQL_CONFIG_EXECUTABLE} --includedir-server
+			OUTPUT_VARIABLE POSTGRESQL_SERVER_INCLUDE_DIRS
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
+		execute_process(COMMAND ${POSTGRESQL_CONFIG_EXECUTABLE}
+			OUTPUT_VARIABLE POSTGRESQL_CLIENT_INCLUDE_DIRS
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
+		# This variable is case sensitive for the cmake PostgreSQL module
+		set(PostgreSQL_ADDITIONAL_SEARCH_PATHS ${POSTGRESQL_SERVER_INCLUDE_DIRS} ${POSTGRESQL_CLIENT_INCLUDE_DIRS})
+	endif()
+
+	find_package("PostgreSQL")
+
+	if(POSTGRESQL_FOUND)
+		set(USE_POSTGRESQL TRUE)
+		message(STATUS "PostgreSQL backend enabled")
+		# This variable is case sensitive, don't try to change it to POSTGRESQL_INCLUDE_DIR
+		message(STATUS "PostgreSQL includes: ${PostgreSQL_INCLUDE_DIR}")
+		include_directories(${PostgreSQL_INCLUDE_DIR})
+	else()
+		message(STATUS "PostgreSQL not found!")
+	endif()
+endif(ENABLE_POSTGRESQL)
 
 option(ENABLE_LEVELDB "Enable LevelDB backend" TRUE)
 set(USE_LEVELDB FALSE)
@@ -317,11 +376,12 @@ add_subdirectory(network)
 add_subdirectory(script)
 add_subdirectory(unittest)
 add_subdirectory(util)
+add_subdirectory(irrlicht_changes)
 
 set(common_SRCS
-	areastore.cpp
 	ban.cpp
 	cavegen.cpp
+	chat.cpp
 	clientiface.cpp
 	collision.cpp
 	content_abm.cpp
@@ -332,6 +392,7 @@ set(common_SRCS
 	craftdef.cpp
 	database-dummy.cpp
 	database-leveldb.cpp
+	database-postgresql.cpp
 	database-redis.cpp
 	database-sqlite3.cpp
 	database.cpp
@@ -352,11 +413,13 @@ set(common_SRCS
 	map.cpp
 	mapblock.cpp
 	mapgen.cpp
+	mapgen_flat.cpp
 	mapgen_fractal.cpp
 	mapgen_singlenode.cpp
 	mapgen_v5.cpp
 	mapgen_v6.cpp
 	mapgen_v7.cpp
+	mapgen_valleys.cpp
 	mapnode.cpp
 	mapsector.cpp
 	mg_biome.cpp
@@ -387,6 +450,7 @@ set(common_SRCS
 	sound.cpp
 	staticobject.cpp
 	subgame.cpp
+	terminal_chat_console.cpp
 	tool.cpp
 	treegen.cpp
 	version.cpp
@@ -430,8 +494,8 @@ set(client_SRCS
 	${common_SRCS}
 	${sound_SRCS}
 	${client_network_SRCS}
+	${client_irrlicht_changes_SRCS}
 	camera.cpp
-	chat.cpp
 	client.cpp
 	clientmap.cpp
 	clientmedia.cpp
@@ -558,6 +622,12 @@ if(BUILD_CLIENT)
 			${CGUITTFONT_LIBRARY}
 		)
 	endif()
+	if (USE_CURSES)
+		target_link_libraries(${PROJECT_NAME} ${CURSES_LIBRARIES})
+	endif()
+	if (USE_POSTGRESQL)
+		target_link_libraries(${PROJECT_NAME} ${POSTGRESQL_LIBRARY})
+	endif()
 	if (USE_LEVELDB)
 		target_link_libraries(${PROJECT_NAME} ${LEVELDB_LIBRARY})
 	endif()
@@ -585,6 +655,12 @@ if(BUILD_SERVER)
 	)
 	set_target_properties(${PROJECT_NAME}server PROPERTIES
 			COMPILE_DEFINITIONS "SERVER")
+	if (USE_CURSES)
+		target_link_libraries(${PROJECT_NAME}server ${CURSES_LIBRARIES})
+	endif()
+	if (USE_POSTGRESQL)
+		target_link_libraries(${PROJECT_NAME}server ${POSTGRESQL_LIBRARY})
+	endif()
 	if (USE_LEVELDB)
 		target_link_libraries(${PROJECT_NAME}server ${LEVELDB_LIBRARY})
 	endif()

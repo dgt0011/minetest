@@ -39,11 +39,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 struct EnumString ModApiMapgen::es_BiomeTerrainType[] =
 {
-	{BIOME_NORMAL, "normal"},
-	{BIOME_LIQUID, "liquid"},
-	{BIOME_NETHER, "nether"},
-	{BIOME_AETHER, "aether"},
-	{BIOME_FLAT,   "flat"},
+	{BIOMETYPE_NORMAL, "normal"},
+	{BIOMETYPE_LIQUID, "liquid"},
+	{BIOMETYPE_NETHER, "nether"},
+	{BIOMETYPE_AETHER, "aether"},
+	{BIOMETYPE_FLAT,   "flat"},
 	{0, NULL},
 };
 
@@ -371,13 +371,14 @@ Biome *read_biome_def(lua_State *L, int index, INodeDefManager *ndef)
 		return NULL;
 
 	BiomeType biometype = (BiomeType)getenumfield(L, index, "type",
-		ModApiMapgen::es_BiomeTerrainType, BIOME_NORMAL);
+		ModApiMapgen::es_BiomeTerrainType, BIOMETYPE_NORMAL);
 	Biome *b = BiomeManager::create(biometype);
 
 	b->name            = getstringfield_default(L, index, "name", "");
 	b->depth_top       = getintfield_default(L,    index, "depth_top",       0);
 	b->depth_filler    = getintfield_default(L,    index, "depth_filler",    -31000);
 	b->depth_water_top = getintfield_default(L,    index, "depth_water_top", 0);
+	b->depth_riverbed  = getintfield_default(L,    index, "depth_riverbed",  0);
 	b->y_min           = getintfield_default(L,    index, "y_min",           -31000);
 	b->y_max           = getintfield_default(L,    index, "y_max",           31000);
 	b->heat_point      = getfloatfield_default(L,  index, "heat_point",      0.f);
@@ -391,6 +392,7 @@ Biome *read_biome_def(lua_State *L, int index, INodeDefManager *ndef)
 	nn.push_back(getstringfield_default(L, index, "node_water_top",   ""));
 	nn.push_back(getstringfield_default(L, index, "node_water",       ""));
 	nn.push_back(getstringfield_default(L, index, "node_river_water", ""));
+	nn.push_back(getstringfield_default(L, index, "node_riverbed",    ""));
 	nn.push_back(getstringfield_default(L, index, "node_dust",        ""));
 	ndef->pendNodeResolve(b);
 
@@ -528,24 +530,26 @@ int ModApiMapgen::l_get_mapgen_object(lua_State *L)
 		return 1;
 	}
 	case MGOBJ_BIOMEMAP: {
-		if (!mg->biomemap)
+		if (!mg->biomegen)
 			return 0;
 
 		lua_newtable(L);
 		for (size_t i = 0; i != maplen; i++) {
-			lua_pushinteger(L, mg->biomemap[i]);
+			lua_pushinteger(L, mg->biomegen->biomemap[i]);
 			lua_rawseti(L, -2, i + 1);
 		}
 
 		return 1;
 	}
 	case MGOBJ_HEATMAP: {
-		if (!mg->heatmap)
+		if (!mg->biomegen || mg->biomegen->getType() != BIOMEGEN_ORIGINAL)
 			return 0;
+
+		BiomeGenOriginal *bg = (BiomeGenOriginal *)mg->biomegen;
 
 		lua_newtable(L);
 		for (size_t i = 0; i != maplen; i++) {
-			lua_pushnumber(L, mg->heatmap[i]);
+			lua_pushnumber(L, bg->heatmap[i]);
 			lua_rawseti(L, -2, i + 1);
 		}
 
@@ -553,12 +557,14 @@ int ModApiMapgen::l_get_mapgen_object(lua_State *L)
 	}
 
 	case MGOBJ_HUMIDMAP: {
-		if (!mg->humidmap)
+		if (!mg->biomegen || mg->biomegen->getType() != BIOMEGEN_ORIGINAL)
 			return 0;
+
+		BiomeGenOriginal *bg = (BiomeGenOriginal *)mg->biomegen;
 
 		lua_newtable(L);
 		for (size_t i = 0; i != maplen; i++) {
-			lua_pushnumber(L, mg->humidmap[i]);
+			lua_pushnumber(L, bg->humidmap[i]);
 			lua_rawseti(L, -2, i + 1);
 		}
 
@@ -944,9 +950,18 @@ int ModApiMapgen::l_register_ore(lua_State *L)
 	ore->clust_scarcity = getintfield_default(L, index, "clust_scarcity", 1);
 	ore->clust_num_ores = getintfield_default(L, index, "clust_num_ores", 1);
 	ore->clust_size     = getintfield_default(L, index, "clust_size", 0);
-	ore->nthresh        = getfloatfield_default(L, index, "noise_threshhold", 0);
 	ore->noise          = NULL;
 	ore->flags          = 0;
+
+	//// Get noise_threshold
+	warn_if_field_exists(L, index, "noise_threshhold",
+		"Deprecated: new name is \"noise_threshold\".");
+
+	float nthresh;
+	if (!getfloatfield(L, index, "noise_threshold", nthresh) &&
+			!getfloatfield(L, index, "noise_threshhold", nthresh))
+		nthresh = 0;
+	ore->nthresh = nthresh;
 
 	//// Get y_min/y_max
 	warn_if_field_exists(L, index, "height_min",
@@ -1271,9 +1286,51 @@ int ModApiMapgen::l_place_schematic(lua_State *L)
 		return 0;
 	}
 
-	schem->placeStructure(map, p, 0, (Rotation)rot, force_placement);
+	schem->placeOnMap(map, p, 0, (Rotation)rot, force_placement);
 
 	lua_pushboolean(L, true);
+	return 1;
+}
+
+int ModApiMapgen::l_place_schematic_on_vmanip(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+
+	SchematicManager *schemmgr = getServer(L)->getEmergeManager()->schemmgr;
+
+	//// Read VoxelManip object
+	MMVManip *vm = LuaVoxelManip::checkobject(L, 1)->vm;
+
+	//// Read position
+	v3s16 p = check_v3s16(L, 2);
+
+	//// Read rotation
+	int rot = ROTATE_0;
+	const char *enumstr = lua_tostring(L, 4);
+	if (enumstr)
+		string_to_enum(es_Rotation, rot, std::string(enumstr));
+
+	//// Read force placement
+	bool force_placement = true;
+	if (lua_isboolean(L, 6))
+		force_placement = lua_toboolean(L, 6);
+
+	//// Read node replacements
+	StringMap replace_names;
+	if (lua_istable(L, 5))
+		read_schematic_replacements(L, 5, &replace_names);
+
+	//// Read schematic
+	Schematic *schem = get_or_load_schematic(L, 3, schemmgr, &replace_names);
+	if (!schem) {
+		errorstream << "place_schematic: failed to get schematic" << std::endl;
+		return 0;
+	}
+
+	bool schematic_did_fit = schem->placeOnVManip(
+		vm, p, 0, (Rotation)rot, force_placement);
+
+	lua_pushboolean(L, schematic_did_fit);
 	return 1;
 }
 
@@ -1355,5 +1412,6 @@ void ModApiMapgen::Initialize(lua_State *L, int top)
 	API_FCT(generate_decorations);
 	API_FCT(create_schematic);
 	API_FCT(place_schematic);
+	API_FCT(place_schematic_on_vmanip);
 	API_FCT(serialize_schematic);
 }
