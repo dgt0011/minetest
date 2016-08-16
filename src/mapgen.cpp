@@ -39,14 +39,19 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/numeric.h"
 #include "filesys.h"
 #include "log.h"
+#include "mapgen_flat.h"
+#include "mapgen_fractal.h"
+#include "mapgen_v5.h"
+#include "mapgen_v6.h"
+#include "mapgen_v7.h"
+#include "mapgen_valleys.h"
+#include "mapgen_singlenode.h"
 #include "cavegen.h"
 #include "dungeongen.h"
 
 FlagDesc flagdesc_mapgen[] = {
-	{"trees",       MG_TREES},
 	{"caves",       MG_CAVES},
 	{"dungeons",    MG_DUNGEONS},
-	{"flat",        MG_FLAT},
 	{"light",       MG_LIGHT},
 	{"decorations", MG_DECORATIONS},
 	{NULL,       0}
@@ -63,6 +68,28 @@ FlagDesc flagdesc_gennotify[] = {
 	{NULL,               0}
 };
 
+struct MapgenDesc {
+	const char *name;
+	bool is_user_visible;
+};
+
+////
+//// Built-in mapgens
+////
+
+static MapgenDesc g_reg_mapgens[] = {
+	{"v5",         true},
+	{"v6",         true},
+	{"v7",         true},
+	{"flat",       true},
+	{"fractal",    true},
+	{"valleys",    true},
+	{"singlenode", false},
+};
+
+STATIC_ASSERT(
+	ARRLEN(g_reg_mapgens) == MAPGEN_INVALID,
+	registered_mapgens_is_wrong_size);
 
 ////
 //// Mapgen
@@ -118,6 +145,83 @@ Mapgen::Mapgen(int mapgenid, MapgenParams *params, EmergeManager *emerge) :
 
 Mapgen::~Mapgen()
 {
+}
+
+
+MapgenType Mapgen::getMapgenType(const std::string &mgname)
+{
+	for (size_t i = 0; i != ARRLEN(g_reg_mapgens); i++) {
+		if (mgname == g_reg_mapgens[i].name)
+			return (MapgenType)i;
+	}
+
+	return MAPGEN_INVALID;
+}
+
+
+const char *Mapgen::getMapgenName(MapgenType mgtype)
+{
+	size_t index = (size_t)mgtype;
+	if (index == MAPGEN_INVALID || index >= ARRLEN(g_reg_mapgens))
+		return "invalid";
+
+	return g_reg_mapgens[index].name;
+}
+
+
+Mapgen *Mapgen::createMapgen(MapgenType mgtype, int mgid,
+	MapgenParams *params, EmergeManager *emerge)
+{
+	switch (mgtype) {
+	case MAPGEN_FLAT:
+		return new MapgenFlat(mgid, (MapgenFlatParams *)params, emerge);
+	case MAPGEN_FRACTAL:
+		return new MapgenFractal(mgid, (MapgenFractalParams *)params, emerge);
+	case MAPGEN_SINGLENODE:
+		return new MapgenSinglenode(mgid, (MapgenSinglenodeParams *)params, emerge);
+	case MAPGEN_V5:
+		return new MapgenV5(mgid, (MapgenV5Params *)params, emerge);
+	case MAPGEN_V6:
+		return new MapgenV6(mgid, (MapgenV6Params *)params, emerge);
+	case MAPGEN_V7:
+		return new MapgenV7(mgid, (MapgenV7Params *)params, emerge);
+	case MAPGEN_VALLEYS:
+		return new MapgenValleys(mgid, (MapgenValleysParams *)params, emerge);
+	default:
+		return NULL;
+	}
+}
+
+
+MapgenParams *Mapgen::createMapgenParams(MapgenType mgtype)
+{
+	switch (mgtype) {
+	case MAPGEN_FLAT:
+		return new MapgenFlatParams;
+	case MAPGEN_FRACTAL:
+		return new MapgenFractalParams;
+	case MAPGEN_SINGLENODE:
+		return new MapgenSinglenodeParams;
+	case MAPGEN_V5:
+		return new MapgenV5Params;
+	case MAPGEN_V6:
+		return new MapgenV6Params;
+	case MAPGEN_V7:
+		return new MapgenV7Params;
+	case MAPGEN_VALLEYS:
+		return new MapgenValleysParams;
+	default:
+		return NULL;
+	}
+}
+
+
+void Mapgen::getMapgenNames(std::vector<const char *> *mgnames, bool include_hidden)
+{
+	for (u32 i = 0; i != ARRLEN(g_reg_mapgens); i++) {
+		if (include_hidden || g_reg_mapgens[i].is_user_visible)
+			mgnames->push_back(g_reg_mapgens[i].name);
+	}
 }
 
 
@@ -738,44 +842,44 @@ void MapgenBasic::generateDungeons(s16 max_stone_y, MgStoneType stone_type)
 
 	DungeonParams dp;
 
-	dp.seed = seed;
-
-	dp.np_rarity  = nparams_dungeon_rarity;
-	dp.np_density = nparams_dungeon_density;
-	dp.np_wetness = nparams_dungeon_wetness;
-	dp.c_water    = c_water_source;
+	dp.seed          = seed;
+	dp.c_water       = c_water_source;
+	dp.c_river_water = c_river_water_source;
+	dp.rooms_min     = 2;
+	dp.rooms_max     = 16;
+	dp.y_min         = -MAX_MAP_GENERATION_LIMIT;
+	dp.y_max         = MAX_MAP_GENERATION_LIMIT;
+	dp.np_density    = nparams_dungeon_density;
+	dp.np_alt_wall   = nparams_dungeon_alt_wall;
 
 	switch (stone_type) {
 	default:
 	case MGSTONE_STONE:
-		dp.c_cobble = c_cobble;
-		dp.c_moss   = c_mossycobble;
-		dp.c_stair  = c_stair_cobble;
+		dp.c_wall     = c_cobble;
+		dp.c_alt_wall = c_mossycobble;
+		dp.c_stair    = c_stair_cobble;
 
 		dp.diagonal_dirs = false;
-		dp.mossratio     = 3.0;
 		dp.holesize      = v3s16(1, 2, 1);
 		dp.roomsize      = v3s16(0, 0, 0);
 		dp.notifytype    = GENNOTIFY_DUNGEON;
 		break;
 	case MGSTONE_DESERT_STONE:
-		dp.c_cobble = c_desert_stone;
-		dp.c_moss   = c_desert_stone;
-		dp.c_stair  = c_desert_stone;
+		dp.c_wall     = c_desert_stone;
+		dp.c_alt_wall = CONTENT_IGNORE;
+		dp.c_stair    = c_desert_stone;
 
 		dp.diagonal_dirs = true;
-		dp.mossratio     = 0.0;
 		dp.holesize      = v3s16(2, 3, 2);
 		dp.roomsize      = v3s16(2, 5, 2);
 		dp.notifytype    = GENNOTIFY_TEMPLE;
 		break;
 	case MGSTONE_SANDSTONE:
-		dp.c_cobble = c_sandstonebrick;
-		dp.c_moss   = c_sandstonebrick;
-		dp.c_stair  = c_sandstonebrick;
+		dp.c_wall     = c_sandstonebrick;
+		dp.c_alt_wall = CONTENT_IGNORE;
+		dp.c_stair    = c_sandstonebrick;
 
 		dp.diagonal_dirs = false;
-		dp.mossratio     = 0.0;
 		dp.holesize      = v3s16(2, 2, 2);
 		dp.roomsize      = v3s16(2, 0, 2);
 		dp.notifytype    = GENNOTIFY_DUNGEON;
@@ -864,52 +968,46 @@ void GenerateNotifier::getEvents(
 MapgenParams::~MapgenParams()
 {
 	delete bparams;
-	delete sparams;
 }
 
 
-void MapgenParams::load(const Settings &settings)
+void MapgenParams::readParams(const Settings *settings)
 {
 	std::string seed_str;
-	const char *seed_name = (&settings == g_settings) ? "fixed_map_seed" : "seed";
+	const char *seed_name = (settings == g_settings) ? "fixed_map_seed" : "seed";
 
-	if (settings.getNoEx(seed_name, seed_str) && !seed_str.empty())
-		seed = read_seed(seed_str.c_str());
-	else
-		myrand_bytes(&seed, sizeof(seed));
+	if (settings->getNoEx(seed_name, seed_str)) {
+		if (!seed_str.empty())
+			seed = read_seed(seed_str.c_str());
+		else
+			myrand_bytes(&seed, sizeof(seed));
+	}
 
-	settings.getNoEx("mg_name", mg_name);
-	settings.getS16NoEx("water_level", water_level);
-	settings.getS16NoEx("chunksize", chunksize);
-	settings.getFlagStrNoEx("mg_flags", flags, flagdesc_mapgen);
+	std::string mg_name;
+	if (settings->getNoEx("mg_name", mg_name))
+		this->mgtype = Mapgen::getMapgenType(mg_name);
+
+	settings->getS16NoEx("water_level", water_level);
+	settings->getS16NoEx("chunksize", chunksize);
+	settings->getFlagStrNoEx("mg_flags", flags, flagdesc_mapgen);
 
 	delete bparams;
 	bparams = BiomeManager::createBiomeParams(BIOMEGEN_ORIGINAL);
 	if (bparams) {
-		bparams->readParams(&settings);
+		bparams->readParams(settings);
 		bparams->seed = seed;
-	}
-
-	delete sparams;
-	MapgenFactory *mgfactory = EmergeManager::getMapgenFactory(mg_name);
-	if (mgfactory) {
-		sparams = mgfactory->createMapgenParams();
-		sparams->readParams(&settings);
 	}
 }
 
 
-void MapgenParams::save(Settings &settings) const
+void MapgenParams::writeParams(Settings *settings) const
 {
-	settings.set("mg_name", mg_name);
-	settings.setU64("seed", seed);
-	settings.setS16("water_level", water_level);
-	settings.setS16("chunksize", chunksize);
-	settings.setFlagStr("mg_flags", flags, flagdesc_mapgen, U32_MAX);
+	settings->set("mg_name", Mapgen::getMapgenName(mgtype));
+	settings->setU64("seed", seed);
+	settings->setS16("water_level", water_level);
+	settings->setS16("chunksize", chunksize);
+	settings->setFlagStr("mg_flags", flags, flagdesc_mapgen, U32_MAX);
 
 	if (bparams)
-		bparams->writeParams(&settings);
-
-	if (sparams)
-		sparams->writeParams(&settings);
+		bparams->writeParams(settings);
 }

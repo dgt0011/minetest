@@ -1273,10 +1273,10 @@ static void updateChat(Client &client, f32 dtime, bool show_debug,
 	setStaticText(guitext_chat, recent_chat);
 
 	// Update gui element size and position
-	s32 chat_y = 5 + line_height;
+	s32 chat_y = 5;
 
 	if (show_debug)
-		chat_y += line_height;
+		chat_y += 2 * line_height;
 
 	// first pass to calculate height of text to be set
 	s32 width = std::min(g_fontengine->getTextWidth(recent_chat.c_str()) + 10,
@@ -1371,6 +1371,7 @@ void KeyCache::populate()
 			= getKeySetting("keymap_decrease_viewing_range_min");
 	key[KeyType::RANGESELECT]
 			= getKeySetting("keymap_rangeselect");
+	key[KeyType::ZOOM] = getKeySetting("keymap_zoom");
 
 	key[KeyType::QUICKTUNE_NEXT] = getKeySetting("keymap_quicktune_next");
 	key[KeyType::QUICKTUNE_PREV] = getKeySetting("keymap_quicktune_prev");
@@ -2205,6 +2206,8 @@ bool Game::createClient(const std::string &playername,
 	/* Set window caption
 	 */
 	std::wstring str = utf8_to_wide(PROJECT_NAME_C);
+	str += L" ";
+	str += utf8_to_wide(g_version_hash);
 	str += L" [";
 	str += driver->getName();
 	str += L"]";
@@ -3268,6 +3271,7 @@ void Game::updatePlayerControl(const CameraOrientation &cam)
 		isKeyDown(KeyType::JUMP),
 		isKeyDown(KeyType::SPECIAL1),
 		isKeyDown(KeyType::SNEAK),
+		isKeyDown(KeyType::ZOOM),
 		isLeftPressed(),
 		isRightPressed(),
 		cam.camera_pitch,
@@ -4309,23 +4313,12 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats,
 
 inline static const char *yawToDirectionString(int yaw)
 {
-	// NOTE: TODO: This can be done mathematically without the else/else-if
-	// cascade.
-
-	const char *player_direction;
+	static const char *direction[4] = {"North [+Z]", "West [-X]", "South [-Z]", "East [+X]"};
 
 	yaw = wrapDegrees_0_360(yaw);
+	yaw = (yaw + 45) % 360 / 90;
 
-	if (yaw >= 45 && yaw < 135)
-		player_direction = "West [-X]";
-	else if (yaw >= 135 && yaw < 225)
-		player_direction = "South [-Z]";
-	else if (yaw >= 225 && yaw < 315)
-		player_direction = "East [+X]";
-	else
-		player_direction = "North [+Z]";
-
-	return player_direction;
+	return direction[yaw];
 }
 
 
@@ -4358,11 +4351,6 @@ void Game::updateGui(float *statustext_time, const RunStats &stats,
 		   << ", v_range = " << draw_control->wanted_range
 		   << std::setprecision(3)
 		   << ", RTT = " << client->getRTT();
-		setStaticText(guitext, utf8_to_wide(os.str()).c_str());
-		guitext->setVisible(true);
-	} else if (flags.show_hud || flags.show_chat) {
-		std::ostringstream os(std::ios_base::binary);
-		os << PROJECT_NAME_C " " << g_version_hash;
 		setStaticText(guitext, utf8_to_wide(os.str()).c_str());
 		guitext->setVisible(true);
 	} else {
