@@ -521,9 +521,9 @@ irrlicht_download :
 		cd deps;                                                               \
 		git clone ${IRRLICHT_URL_GIT} irrlicht|| exit 1;		      \
 		cd irrlicht;                                                           \
-		patch -p1 < ../../irrlicht-touchcount.patch || exit 1;                 \
-		patch -p1 < ../../irrlicht-back_button.patch || exit 1;                \
-		patch -p1 < ../../irrlicht-texturehack.patch || exit 1;                \
+		patch -p1 < ../../patches/irrlicht-touchcount.patch || exit 1;                 \
+		patch -p1 < ../../patches/irrlicht-back_button.patch || exit 1;                \
+		patch -p1 < ../../patches/irrlicht-texturehack.patch || exit 1;                \
 	fi
 
 $(IRRLICHT_TIMESTAMP) : irrlicht_download
