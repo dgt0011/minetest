@@ -116,7 +116,7 @@ bool ClientLauncher::run(GameParams &game_params, const Settings &cmd_args)
 
 	// [TEMP ROLLBACK] porting::setXorgWindowIcon(device);
 	porting::setXorgWindowIcon(device,
- -		porting::path_share + "/misc/minetest-xorg-icon-128.png");
+ 		porting::path_share + "/misc/minetest-xorg-icon-128.png");
 
 	/*
 		This changes the minimum allowed number of vertices in a VBO.
