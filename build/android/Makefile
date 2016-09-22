@@ -725,6 +725,7 @@ assets : $(ASSETS_TIMESTAMP)
 	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
 	done; 									   \
 	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
+	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
 	for mod in ${MODS_TO_COPY}; do                                             \
 	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
