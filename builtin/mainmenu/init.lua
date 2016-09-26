@@ -117,6 +117,7 @@ local function init_globals()
 					end
 				end
 			end
+		end
 
 		gamedata.worldindex = world_index
 	else
