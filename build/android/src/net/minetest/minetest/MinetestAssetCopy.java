@@ -98,10 +98,10 @@ public class MinetestAssetCopy extends Activity
 			String baseDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
-			
+			 
 			
 			// prepare temp folder
-			File TempFolder = new File(baseDir + "Minetest/tmp/");
+			File TempFolder = new File(baseDir + "eidy/tmp/");
 			
 			if (!TempFolder.exists())
 			{
@@ -119,7 +119,7 @@ public class MinetestAssetCopy extends Activity
 			
 			// add a .nomedia file
 			try {
-				OutputStream dst = new FileOutputStream(baseDir + "Minetest/.nomedia");
+				OutputStream dst = new FileOutputStream(baseDir + "eidy/.nomedia");
 				dst.close();
 			} catch (IOException e) {
 				Log.e("MinetestAssetCopy","Failed to create .nomedia file");
