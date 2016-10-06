@@ -69,18 +69,18 @@ GPROF_DEF=-DGPROF
 endif
 
 LOCAL_CFLAGS := -D_IRR_ANDROID_PLATFORM_      \
-				-DHAVE_TOUCHSCREENGUI         \
-				-DUSE_CURL=1                  \
-				-DUSE_SOUND=1                 \
-				-DUSE_FREETYPE=1              \
-				-DUSE_LEVELDB=$(HAVE_LEVELDB) \
-				$(GPROF_DEF)                  \
-				-pipe -fstrict-aliasing
+		-DHAVE_TOUCHSCREENGUI         \
+		-DUSE_CURL=1                  \
+		-DUSE_SOUND=1                 \
+		-DUSE_FREETYPE=1              \
+		-DUSE_LEVELDB=$(HAVE_LEVELDB) \
+		$(GPROF_DEF)                  \
+		-pipe -fstrict-aliasing
 
 ifndef NDEBUG
 LOCAL_CFLAGS += -g -D_DEBUG -O0 -fno-omit-frame-pointer
 else
-LOCAL_CFLAGS += -fexpensive-optimizations -O3
+LOCAL_CFLAGS += -O3
 endif
 
 ifdef GPROF
@@ -95,11 +95,11 @@ ifeq ($(TARGET_ARCH_ABI),x86)
 LOCAL_CFLAGS += -fno-stack-protector
 endif
 
-LOCAL_C_INCLUDES :=                               \
-		jni/src jni/src/sqlite                    \
+LOCAL_C_INCLUDES := \
+		jni/src                                   \
 		jni/src/script                            \
 		jni/src/lua/src                           \
-		jni/src/json                              \
+		jni/src/jsoncpp                           \
 		jni/src/cguittfont                        \
 		deps/irrlicht/include                     \
 		deps/libiconv/include                     \
@@ -111,8 +111,7 @@ LOCAL_C_INCLUDES :=                               \
 		deps/leveldb/include                      \
 		deps/sqlite/
 
-LOCAL_SRC_FILES :=                                \
-		jni/src/areastore.cpp                     \
+LOCAL_SRC_FILES := \
 		jni/src/ban.cpp                           \
 		jni/src/camera.cpp                        \
 		jni/src/cavegen.cpp                       \
@@ -170,14 +169,17 @@ LOCAL_SRC_FILES :=                                \
 		jni/src/log.cpp                           \
 		jni/src/main.cpp                          \
 		jni/src/map.cpp                           \
+		jni/src/map_settings_manager.cpp          \
 		jni/src/mapblock.cpp                      \
 		jni/src/mapblock_mesh.cpp                 \
 		jni/src/mapgen.cpp                        \
+		jni/src/mapgen_flat.cpp                   \
 		jni/src/mapgen_fractal.cpp                \
 		jni/src/mapgen_singlenode.cpp             \
 		jni/src/mapgen_v5.cpp                     \
 		jni/src/mapgen_v6.cpp                     \
 		jni/src/mapgen_v7.cpp                     \
+		jni/src/mapgen_valleys.cpp                \
 		jni/src/mapnode.cpp                       \
 		jni/src/mapsector.cpp                     \
 		jni/src/mesh.cpp                          \
@@ -219,9 +221,11 @@ LOCAL_SRC_FILES :=                                \
 		jni/src/version.cpp                       \
 		jni/src/voxel.cpp                         \
 		jni/src/voxelalgorithms.cpp               \
+		jni/src/util/areastore.cpp                \
 		jni/src/util/auth.cpp                     \
 		jni/src/util/base64.cpp                   \
 		jni/src/util/directiontables.cpp          \
+		jni/src/util/enriched_string.cpp          \
 		jni/src/util/numeric.cpp                  \
 		jni/src/util/pointedthing.cpp             \
 		jni/src/util/serialize.cpp                \
@@ -235,6 +239,7 @@ LOCAL_SRC_FILES :=                                \
 		jni/src/unittest/test_connection.cpp      \
 		jni/src/unittest/test_filepath.cpp        \
 		jni/src/unittest/test_inventory.cpp       \
+		jni/src/unittest/test_map_settings_manager.cpp \
 		jni/src/unittest/test_mapnode.cpp         \
 		jni/src/unittest/test_nodedef.cpp         \
 		jni/src/unittest/test_noderesolver.cpp    \
@@ -254,12 +259,14 @@ LOCAL_SRC_FILES :=                                \
 		jni/src/settings.cpp                      \
 		jni/src/wieldmesh.cpp                     \
 		jni/src/client/clientlauncher.cpp         \
-		jni/src/client/tile.cpp
+		jni/src/client/tile.cpp                   \
+		jni/src/client/joystick_controller.cpp    \
+		jni/src/irrlicht_changes/static_text.cpp
 
 # intentionally kept out (we already build openssl itself): jni/src/util/sha256.c
 
 # Network
-LOCAL_SRC_FILES +=                                \
+LOCAL_SRC_FILES += \
 		jni/src/network/connection.cpp            \
 		jni/src/network/networkpacket.cpp         \
 		jni/src/network/clientopcodes.cpp         \
@@ -268,7 +275,7 @@ LOCAL_SRC_FILES +=                                \
 		jni/src/network/serverpackethandler.cpp   \
 
 # lua api
-LOCAL_SRC_FILES +=                                \
+LOCAL_SRC_FILES += \
 		jni/src/script/common/c_content.cpp       \
 		jni/src/script/common/c_converter.cpp     \
 		jni/src/script/common/c_internal.cpp      \
@@ -301,17 +308,17 @@ LOCAL_SRC_FILES +=                                \
 		jni/src/script/lua_api/l_rollback.cpp     \
 		jni/src/script/lua_api/l_server.cpp       \
 		jni/src/script/lua_api/l_settings.cpp     \
+		jni/src/script/lua_api/l_http.cpp         \
 		jni/src/script/lua_api/l_util.cpp         \
 		jni/src/script/lua_api/l_vmanip.cpp       \
 		jni/src/script/scripting_game.cpp         \
 		jni/src/script/scripting_mainmenu.cpp
 
 #freetype2 support
-LOCAL_SRC_FILES +=                                \
-		jni/src/cguittfont/xCGUITTFont.cpp
+LOCAL_SRC_FILES += jni/src/cguittfont/xCGUITTFont.cpp
 
-# lua
-LOCAL_SRC_FILES +=                                \
+# Lua
+LOCAL_SRC_FILES += \
 		jni/src/lua/src/lapi.c                    \
 		jni/src/lua/src/lauxlib.c                 \
 		jni/src/lua/src/lbaselib.c                \
@@ -348,12 +355,13 @@ LOCAL_SRC_FILES += deps/sqlite/sqlite3.c
 
 # Threading
 LOCAL_SRC_FILES += \
+		jni/src/threading/event.cpp \
 		jni/src/threading/mutex.cpp \
 		jni/src/threading/semaphore.cpp \
 		jni/src/threading/thread.cpp
 
 # JSONCPP
-LOCAL_SRC_FILES += jni/src/json/jsoncpp.cpp
+LOCAL_SRC_FILES += jni/src/jsoncpp/json/jsoncpp.cpp
 
 LOCAL_SHARED_LIBRARIES := iconv openal ogg vorbis gmp
 LOCAL_STATIC_LIBRARIES := Irrlicht freetype curl ssl crypto android_native_app_glue $(PROFILER_LIBS)
@@ -370,3 +378,4 @@ ifdef GPROF
 $(call import-module,android-ndk-profiler)
 endif
 $(call import-module,android/native_app_glue)
+

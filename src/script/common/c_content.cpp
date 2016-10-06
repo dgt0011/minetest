@@ -33,7 +33,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "porting.h"
 #include "mg_schematic.h"
 #include "noise.h"
-#include "json/json.h"
+#include <json/json.h>
 
 struct EnumString es_TileAnimationType[] =
 {
@@ -76,7 +76,7 @@ ItemDefinition read_item_definition(lua_State* L,int index,
 	getboolfield(L, index, "liquids_pointable", def.liquids_pointable);
 
 	warn_if_field_exists(L, index, "tool_digging_properties",
-			"deprecated: use tool_capabilities");
+			"Deprecated; use tool_capabilities");
 
 	lua_getfield(L, index, "tool_capabilities");
 	if(lua_istable(L, -1)){
@@ -99,6 +99,9 @@ ItemDefinition read_item_definition(lua_State* L,int index,
 	if(lua_istable(L, -1)){
 		lua_getfield(L, -1, "place");
 		read_soundspec(L, -1, def.sound_place);
+		lua_pop(L, 1);
+		lua_getfield(L, -1, "place_failed");
+		read_soundspec(L, -1, def.sound_place_failed);
 		lua_pop(L, 1);
 	}
 	lua_pop(L, 1);
@@ -197,6 +200,23 @@ void read_object_properties(lua_State *L, int index,
 		prop->automatic_face_movement_dir_offset = 0.0;
 	}
 	lua_pop(L, 1);
+	getboolfield(L, -1, "backface_culling", prop->backface_culling);
+
+	getstringfield(L, -1, "nametag", prop->nametag);
+	lua_getfield(L, -1, "nametag_color");
+	if (!lua_isnil(L, -1)) {
+		video::SColor color = prop->nametag_color;
+		if (read_color(L, -1, &color))
+			prop->nametag_color = color;
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, -1, "automatic_face_movement_max_rotation_per_sec");
+	if (lua_isnumber(L, -1)) {
+		prop->automatic_face_movement_max_rotation_per_sec = luaL_checknumber(L, -1);
+	}
+	lua_pop(L, 1);
+	getstringfield(L, -1, "infotext", prop->infotext);
 }
 
 /******************************************************************************/
@@ -255,6 +275,16 @@ void push_object_properties(lua_State *L, ObjectProperties *prop)
 	else
 		lua_pushboolean(L, false);
 	lua_setfield(L, -2, "automatic_face_movement_dir");
+	lua_pushboolean(L, prop->backface_culling);
+	lua_setfield(L, -2, "backface_culling");
+	lua_pushlstring(L, prop->nametag.c_str(), prop->nametag.size());
+	lua_setfield(L, -2, "nametag");
+	push_ARGB8(L, prop->nametag_color);
+	lua_setfield(L, -2, "nametag_color");
+	lua_pushnumber(L, prop->automatic_face_movement_max_rotation_per_sec);
+	lua_setfield(L, -2, "automatic_face_movement_max_rotation_per_sec");
+	lua_pushlstring(L, prop->infotext.c_str(), prop->infotext.size());
+	lua_setfield(L, -2, "infotext");
 }
 
 /******************************************************************************/
@@ -264,14 +294,31 @@ TileDef read_tiledef(lua_State *L, int index, u8 drawtype)
 		index = lua_gettop(L) + 1 + index;
 
 	TileDef tiledef;
-	bool default_tiling = (drawtype == NDT_PLANTLIKE || drawtype == NDT_FIRELIKE)
-		? false : true;
+
+	bool default_tiling = true;
+	bool default_culling = true;
+	switch (drawtype) {
+		case NDT_PLANTLIKE:
+		case NDT_FIRELIKE:
+			default_tiling = false;
+			// "break" is omitted here intentionaly, as PLANTLIKE
+			// FIRELIKE drawtype both should default to having
+			// backface_culling to false.
+		case NDT_MESH:
+		case NDT_LIQUID:
+			default_culling = false;
+			break;
+		default:
+			break;
+	}
+
 	// key at index -2 and value at index
 	if(lua_isstring(L, index)){
 		// "default_lava.png"
 		tiledef.name = lua_tostring(L, index);
 		tiledef.tileable_vertical = default_tiling;
 		tiledef.tileable_horizontal = default_tiling;
+		tiledef.backface_culling = default_culling;
 	}
 	else if(lua_istable(L, index))
 	{
@@ -280,7 +327,7 @@ TileDef read_tiledef(lua_State *L, int index, u8 drawtype)
 		getstringfield(L, index, "name", tiledef.name);
 		getstringfield(L, index, "image", tiledef.name); // MaterialSpec compat.
 		tiledef.backface_culling = getboolfield_default(
-			L, index, "backface_culling", true);
+			L, index, "backface_culling", default_culling);
 		tiledef.tileable_horizontal = getboolfield_default(
 			L, index, "tileable_horizontal", default_tiling);
 		tiledef.tileable_vertical = getboolfield_default(
@@ -427,17 +474,17 @@ ContentFeatures read_content_features(lua_State *L, int index)
 
 	// Warn about some deprecated fields
 	warn_if_field_exists(L, index, "wall_mounted",
-			"deprecated: use paramtype2 = 'wallmounted'");
+			"Deprecated; use paramtype2 = 'wallmounted'");
 	warn_if_field_exists(L, index, "light_propagates",
-			"deprecated: determined from paramtype");
+			"Deprecated; determined from paramtype");
 	warn_if_field_exists(L, index, "dug_item",
-			"deprecated: use 'drop' field");
+			"Deprecated; use 'drop' field");
 	warn_if_field_exists(L, index, "extra_dug_item",
-			"deprecated: use 'drop' field");
+			"Deprecated; use 'drop' field");
 	warn_if_field_exists(L, index, "extra_dug_item_rarity",
-			"deprecated: use 'drop' field");
+			"Deprecated; use 'drop' field");
 	warn_if_field_exists(L, index, "metadata_name",
-			"deprecated: use on_add and metadata callbacks");
+			"Deprecated; use on_add and metadata callbacks");
 
 	// True for all ground-like things like stone and mud, false for eg. trees
 	getboolfield(L, index, "is_ground_content", f.is_ground_content);
@@ -454,6 +501,8 @@ ContentFeatures read_content_features(lua_State *L, int index)
 	getboolfield(L, index, "climbable", f.climbable);
 	// Player can build on these
 	getboolfield(L, index, "buildable_to", f.buildable_to);
+	// Liquids flow into and replace node
+	getboolfield(L, index, "floodable", f.floodable);
 	// Whether the node is non-liquid, source liquid or flowing liquid
 	f.liquid_type = (LiquidType)getenumfield(L, index, "liquidtype",
 			ScriptApiNode::es_LiquidType, LIQUID_NONE);
@@ -484,6 +533,46 @@ ContentFeatures read_content_features(lua_State *L, int index)
 	lua_getfield(L, index, "node_box");
 	if(lua_istable(L, -1))
 		f.node_box = read_nodebox(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, index, "connects_to");
+	if (lua_istable(L, -1)) {
+		int table = lua_gettop(L);
+		lua_pushnil(L);
+		while (lua_next(L, table) != 0) {
+			// Value at -1
+			f.connects_to.push_back(lua_tostring(L, -1));
+			lua_pop(L, 1);
+		}
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, index, "connect_sides");
+	if (lua_istable(L, -1)) {
+		int table = lua_gettop(L);
+		lua_pushnil(L);
+		while (lua_next(L, table) != 0) {
+			// Value at -1
+			std::string side(lua_tostring(L, -1));
+			// Note faces are flipped to make checking easier
+			if (side == "top")
+				f.connect_sides |= 2;
+			else if (side == "bottom")
+				f.connect_sides |= 1;
+			else if (side == "front")
+				f.connect_sides |= 16;
+			else if (side == "left")
+				f.connect_sides |= 32;
+			else if (side == "back")
+				f.connect_sides |= 4;
+			else if (side == "right")
+				f.connect_sides |= 8;
+			else
+				warningstream << "Unknown value for \"connect_sides\": "
+					<< side << std::endl;
+			lua_pop(L, 1);
+		}
+	}
 	lua_pop(L, 1);
 
 	lua_getfield(L, index, "selection_box");
@@ -578,25 +667,31 @@ NodeBox read_nodebox(lua_State *L, int index)
 		nodebox.type = (NodeBoxType)getenumfield(L, index, "type",
 				ScriptApiNode::es_NodeBoxType, NODEBOX_REGULAR);
 
-		lua_getfield(L, index, "fixed");
-		if(lua_istable(L, -1))
-			nodebox.fixed = read_aabb3f_vector(L, -1, BS);
-		lua_pop(L, 1);
+#define NODEBOXREAD(n, s) \
+	do { \
+		lua_getfield(L, index, (s)); \
+		if (lua_istable(L, -1)) \
+			(n) = read_aabb3f(L, -1, BS); \
+		lua_pop(L, 1); \
+	} while (0)
 
-		lua_getfield(L, index, "wall_top");
-		if(lua_istable(L, -1))
-			nodebox.wall_top = read_aabb3f(L, -1, BS);
-		lua_pop(L, 1);
-
-		lua_getfield(L, index, "wall_bottom");
-		if(lua_istable(L, -1))
-			nodebox.wall_bottom = read_aabb3f(L, -1, BS);
-		lua_pop(L, 1);
-
-		lua_getfield(L, index, "wall_side");
-		if(lua_istable(L, -1))
-			nodebox.wall_side = read_aabb3f(L, -1, BS);
-		lua_pop(L, 1);
+#define NODEBOXREADVEC(n, s) \
+	do { \
+		lua_getfield(L, index, (s)); \
+		if (lua_istable(L, -1)) \
+			(n) = read_aabb3f_vector(L, -1, BS); \
+		lua_pop(L, 1); \
+	} while (0)
+		NODEBOXREADVEC(nodebox.fixed, "fixed");
+		NODEBOXREAD(nodebox.wall_top, "wall_top");
+		NODEBOXREAD(nodebox.wall_bottom, "wall_bottom");
+		NODEBOXREAD(nodebox.wall_side, "wall_side");
+		NODEBOXREADVEC(nodebox.connect_top, "connect_top");
+		NODEBOXREADVEC(nodebox.connect_bottom, "connect_bottom");
+		NODEBOXREADVEC(nodebox.connect_front, "connect_front");
+		NODEBOXREADVEC(nodebox.connect_left, "connect_left");
+		NODEBOXREADVEC(nodebox.connect_back, "connect_back");
+		NODEBOXREADVEC(nodebox.connect_right, "connect_right");
 	}
 	return nodebox;
 }
@@ -639,14 +734,13 @@ void pushnode(lua_State *L, const MapNode &n, INodeDefManager *ndef)
 
 /******************************************************************************/
 void warn_if_field_exists(lua_State *L, int table,
-		const char *fieldname, const std::string &message)
+		const char *name, const std::string &message)
 {
-	lua_getfield(L, table, fieldname);
-	if(!lua_isnil(L, -1)){
-//TODO find way to access backtrace fct from here
-		//		infostream<<script_get_backtrace(L)<<std::endl;
-		infostream<<"WARNING: field \""<<fieldname<<"\": "
-				<<message<<std::endl;
+	lua_getfield(L, table, name);
+	if (!lua_isnil(L, -1)) {
+		warningstream << "Field \"" << name << "\": "
+				<< message << std::endl;
+		infostream << script_get_backtrace(L) << std::endl;
 	}
 	lua_pop(L, 1);
 }
@@ -705,7 +799,7 @@ ItemStack read_item(lua_State* L, int index,Server* srv)
 		}
 		catch(SerializationError &e)
 		{
-			infostream<<"WARNING: unable to create item from itemstring"
+			warningstream<<"unable to create item from itemstring"
 					<<": "<<itemstring<<std::endl;
 			return ItemStack();
 		}
@@ -840,14 +934,14 @@ ToolCapabilities read_tool_capabilities(
 				getintfield(L, table_groupcap, "uses", groupcap.uses);
 				// DEPRECATED: maxwear
 				float maxwear = 0;
-				if(getfloatfield(L, table_groupcap, "maxwear", maxwear)){
-					if(maxwear != 0)
+				if (getfloatfield(L, table_groupcap, "maxwear", maxwear)){
+					if (maxwear != 0)
 						groupcap.uses = 1.0/maxwear;
 					else
 						groupcap.uses = 0;
-					infostream<<script_get_backtrace(L)<<std::endl;
-					infostream<<"WARNING: field \"maxwear\" is deprecated; "
-							<<"should replace with uses=1/maxwear"<<std::endl;
+					warningstream << "Field \"maxwear\" is deprecated; "
+							<< "replace with uses=1/maxwear" << std::endl;
+					infostream << script_get_backtrace(L) << std::endl;
 				}
 				// Read "times" table
 				lua_getfield(L, table_groupcap, "times");
@@ -1156,8 +1250,13 @@ static bool push_json_value_helper(lua_State *L, const Json::Value &value,
 			lua_newtable(L);
 			for (Json::Value::const_iterator it = value.begin();
 					it != value.end(); ++it) {
+#ifndef JSONCPP_STRING
 				const char *str = it.memberName();
 				lua_pushstring(L, str ? str : "");
+#else
+				std::string str = it.name();
+				lua_pushstring(L, str.c_str());
+#endif
 				push_json_value_helper(L, *it, nullindex);
 				lua_rawset(L, -3);
 			}
@@ -1232,4 +1331,3 @@ void read_json_value(lua_State *L, Json::Value &root, int index, u8 recursion)
 	}
 	lua_pop(L, 1); // Pop value
 }
-

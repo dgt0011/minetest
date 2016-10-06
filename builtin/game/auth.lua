@@ -20,7 +20,7 @@ function core.privs_to_string(privs, delim)
 	local list = {}
 	for priv, bool in pairs(privs) do
 		if bool then
-			table.insert(list, priv)
+			list[#list + 1] = priv
 		end
 	end
 	return table.concat(list, delim)
@@ -199,3 +199,19 @@ core.register_on_joinplayer(function(player)
 	record_login(player:get_player_name())
 end)
 
+core.register_on_prejoinplayer(function(name, ip)
+	local auth = core.auth_table
+	if auth[name] ~= nil then
+		return
+	end
+
+	local name_lower = name:lower()
+	for k in pairs(auth) do
+		if k:lower() == name_lower then
+			return string.format("\nCannot create new player called '%s'. "..
+					"Another account called '%s' is already registered. "..
+					"Please check the spelling if it's your account "..
+					"or use a different nickname.", name, k)
+		end
+	end
+end)

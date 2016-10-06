@@ -29,6 +29,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	#include <sys/types.h>
 	#include <sys/sysctl.h>
 #elif defined(_WIN32)
+	#include <windows.h>
+	#include <wincrypt.h>
 	#include <algorithm>
 #endif
 #if !defined(_WIN32)
@@ -73,26 +75,32 @@ bool * signal_handler_killstatus(void)
 #if !defined(_WIN32) // POSIX
 	#include <signal.h>
 
-void sigint_handler(int sig)
+void signal_handler(int sig)
 {
-	if(!g_killed) {
-		dstream<<DTIME<<"INFO: sigint_handler(): "
-				<<"Ctrl-C pressed, shutting down."<<std::endl;
+	if (!g_killed) {
+		if (sig == SIGINT) {
+			dstream << "INFO: signal_handler(): "
+				<< "Ctrl-C pressed, shutting down." << std::endl;
+		} else if (sig == SIGTERM) {
+			dstream << "INFO: signal_handler(): "
+				<< "got SIGTERM, shutting down." << std::endl;
+		}
 
 		// Comment out for less clutter when testing scripts
-		/*dstream<<DTIME<<"INFO: sigint_handler(): "
-				<<"Printing debug stacks"<<std::endl;
+		/*dstream << "INFO: sigint_handler(): "
+				<< "Printing debug stacks" << std::endl;
 		debug_stacks_print();*/
 
 		g_killed = true;
 	} else {
-		(void)signal(SIGINT, SIG_DFL);
+		(void)signal(sig, SIG_DFL);
 	}
 }
 
 void signal_handler_init(void)
 {
-	(void)signal(SIGINT, sigint_handler);
+	(void)signal(SIGINT, signal_handler);
+	(void)signal(SIGTERM, signal_handler);
 }
 
 #else // _WIN32
@@ -105,8 +113,8 @@ BOOL WINAPI event_handler(DWORD sig)
 	case CTRL_CLOSE_EVENT:
 	case CTRL_LOGOFF_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
-		if (g_killed == false) {
-			dstream << DTIME << "INFO: event_handler(): "
+		if (!g_killed) {
+			dstream << "INFO: event_handler(): "
 				<< "Ctrl+C, Close Event, Logoff Event or Shutdown Event,"
 				" shutting down." << std::endl;
 			g_killed = true;
@@ -137,6 +145,7 @@ void signal_handler_init(void)
 std::string path_share = "..";
 std::string path_user = "..";
 std::string path_locale = path_share + DIR_DELIM + "locale";
+std::string path_cache = path_user + DIR_DELIM + "cache";
 
 
 std::string getDataPath(const char *subpath)
@@ -160,6 +169,8 @@ bool detectMSVCBuildDir(const std::string &path)
 {
 	const char *ends[] = {
 		"bin\\Release",
+		"bin\\MinSizeRel",
+		"bin\\RelWithDebInfo",
 		"bin\\Debug",
 		"bin\\Build",
 		NULL
@@ -247,7 +258,7 @@ bool getCurrentExecPath(char *buf, size_t len)
 
 
 //// Linux
-#elif defined(linux) || defined(__linux) || defined(__linux__)
+#elif defined(__linux__)
 
 bool getCurrentExecPath(char *buf, size_t len)
 {
@@ -363,7 +374,7 @@ bool setSystemPaths()
 
 
 //// Linux
-#elif defined(linux) || defined(__linux)
+#elif defined(__linux__)
 
 bool setSystemPaths()
 {
@@ -401,14 +412,14 @@ bool setSystemPaths()
 		const std::string &trypath = *i;
 		if (!fs::PathExists(trypath) ||
 			!fs::PathExists(trypath + DIR_DELIM + "builtin")) {
-			dstream << "WARNING: system-wide share not found at \""
+			warningstream << "system-wide share not found at \""
 					<< trypath << "\""<< std::endl;
 			continue;
 		}
 
 		// Warn if was not the first alternative
 		if (i != trylist.begin()) {
-			dstream << "WARNING: system-wide share found at \""
+			warningstream << "system-wide share found at \""
 					<< trypath << "\"" << std::endl;
 		}
 
@@ -437,7 +448,7 @@ bool setSystemPaths()
 			TRUE, (UInt8 *)path, PATH_MAX)) {
 		path_share = std::string(path);
 	} else {
-		dstream << "WARNING: Could not determine bundle resource path" << std::endl;
+		warningstream << "Could not determine bundle resource path" << std::endl;
 	}
 	CFRelease(resources_url);
 
@@ -461,6 +472,25 @@ bool setSystemPaths()
 
 #endif
 
+void migrateCachePath()
+{
+	const std::string local_cache_path = path_user + DIR_DELIM + "cache";
+
+	// Delete tmp folder if it exists (it only ever contained
+	// a temporary ogg file, which is no longer used).
+	if (fs::PathExists(local_cache_path + DIR_DELIM + "tmp"))
+		fs::RecursiveDelete(local_cache_path + DIR_DELIM + "tmp");
+
+	// Bail if migration impossible
+	if (path_cache == local_cache_path || !fs::PathExists(local_cache_path)
+			|| fs::PathExists(path_cache)) {
+		return;
+	}
+	if (!fs::Rename(local_cache_path, path_cache)) {
+		errorstream << "Failed to migrate local cache path "
+			"to system path!" << std::endl;
+	}
+}
 
 void initializePaths()
 {
@@ -505,19 +535,38 @@ void initializePaths()
 		path_share = execpath;
 		path_user  = execpath;
 	}
+	path_cache = path_user + DIR_DELIM + "cache";
 #else
 	infostream << "Using system-wide paths (NOT RUN_IN_PLACE)" << std::endl;
 
 	if (!setSystemPaths())
 		errorstream << "Failed to get one or more system-wide path" << std::endl;
 
+	// Initialize path_cache
+	// First try $XDG_CACHE_HOME/PROJECT_NAME
+	const char *cache_dir = getenv("XDG_CACHE_HOME");
+	const char *home_dir = getenv("HOME");
+	if (cache_dir) {
+		path_cache = std::string(cache_dir) + DIR_DELIM + PROJECT_NAME;
+	} else if (home_dir) {
+		// Then try $HOME/.cache/PROJECT_NAME
+		path_cache = std::string(home_dir) + DIR_DELIM + ".cache"
+			+ DIR_DELIM + PROJECT_NAME;
+	} else {
+		// If neither works, use $PATH_USER/cache
+		path_cache = path_user + DIR_DELIM + "cache";
+	}
+	// Migrate cache folder to new location if possible
+	migrateCachePath();
 #endif
 
 	infostream << "Detected share path: " << path_share << std::endl;
 	infostream << "Detected user path: " << path_user << std::endl;
+	infostream << "Detected cache path: " << path_cache << std::endl;
 
+#ifdef USE_GETTEXT
 	bool found_localedir = false;
-#ifdef STATIC_LOCALEDIR
+#  ifdef STATIC_LOCALEDIR
 	if (STATIC_LOCALEDIR[0] && fs::PathExists(STATIC_LOCALEDIR)) {
 		found_localedir = true;
 		path_locale = STATIC_LOCALEDIR;
@@ -531,16 +580,16 @@ void initializePaths()
 				<< "(RUN_IN_PLACE or CUSTOM_LOCALEDIR)." << std::endl;
 		}
 	}
-#else
+#  else
 	path_locale = getDataPath("locale");
 	if (fs::PathExists(path_locale)) {
 		found_localedir = true;
 	}
-#endif
+#  endif
 	if (!found_localedir) {
-		errorstream << "Couldn't find a locale directory!" << std::endl;
+		warningstream << "Couldn't find a locale directory!" << std::endl;
 	}
-
+#endif  // USE_GETTEXT
 }
 
 
@@ -562,6 +611,111 @@ void setXorgClassHint(const video::SExposedVideoData &video_data,
 #endif
 }
 
+bool setXorgWindowIcon(IrrlichtDevice *device)
+{
+#if RUN_IN_PLACE
+	return setXorgWindowIconFromPath(device,
+			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
+#else
+	// We have semi-support for reading in-place data if we are
+	// compiled with RUN_IN_PLACE. Don't break with this and
+	// also try the path_share location.
+	return
+		setXorgWindowIconFromPath(device,
+			ICON_DIR "/hicolor/128x128/apps/" PROJECT_NAME ".png") ||
+		setXorgWindowIconFromPath(device,
+			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
+#endif
+}
+
+bool setXorgWindowIconFromPath(IrrlichtDevice *device,
+	const std::string &icon_file)
+{
+#ifdef XORG_USED
+
+	video::IVideoDriver *v_driver = device->getVideoDriver();
+
+	video::IImageLoader *image_loader = NULL;
+	u32 cnt = v_driver->getImageLoaderCount();
+	for (u32 i = 0; i < cnt; i++) {
+		if (v_driver->getImageLoader(i)->isALoadableFileExtension(icon_file.c_str())) {
+			image_loader = v_driver->getImageLoader(i);
+			break;
+		}
+	}
+
+	if (!image_loader) {
+		warningstream << "Could not find image loader for file '"
+			<< icon_file << "'" << std::endl;
+		return false;
+	}
+
+	io::IReadFile *icon_f = device->getFileSystem()->createAndOpenFile(icon_file.c_str());
+
+	if (!icon_f) {
+		warningstream << "Could not load icon file '"
+			<< icon_file << "'" << std::endl;
+		return false;
+	}
+
+	video::IImage *img = image_loader->loadImage(icon_f);
+
+	if (!img) {
+		warningstream << "Could not load icon file '"
+			<< icon_file << "'" << std::endl;
+		icon_f->drop();
+		return false;
+	}
+
+	u32 height = img->getDimension().Height;
+	u32 width = img->getDimension().Width;
+
+	size_t icon_buffer_len = 2 + height * width;
+	long *icon_buffer = new long[icon_buffer_len];
+
+	icon_buffer[0] = width;
+	icon_buffer[1] = height;
+
+	for (u32 x = 0; x < width; x++) {
+		for (u32 y = 0; y < height; y++) {
+			video::SColor col = img->getPixel(x, y);
+			long pixel_val = 0;
+			pixel_val |= (u8)col.getAlpha() << 24;
+			pixel_val |= (u8)col.getRed() << 16;
+			pixel_val |= (u8)col.getGreen() << 8;
+			pixel_val |= (u8)col.getBlue();
+			icon_buffer[2 + x + y * width] = pixel_val;
+		}
+	}
+
+	img->drop();
+	icon_f->drop();
+
+	const video::SExposedVideoData &video_data = v_driver->getExposedVideoData();
+
+	Display *x11_dpl = (Display *)video_data.OpenGLLinux.X11Display;
+
+	if (x11_dpl == NULL) {
+		warningstream << "Could not find x11 display for setting its icon."
+			<< std::endl;
+		delete [] icon_buffer;
+		return false;
+	}
+
+	Window x11_win = (Window)video_data.OpenGLLinux.X11Window;
+
+	Atom net_wm_icon = XInternAtom(x11_dpl, "_NET_WM_ICON", False);
+	Atom cardinal = XInternAtom(x11_dpl, "CARDINAL", False);
+	XChangeProperty(x11_dpl, x11_win,
+		net_wm_icon, cardinal, 32,
+		PropModeReplace, (const unsigned char *)icon_buffer,
+		icon_buffer_len);
+
+	delete [] icon_buffer;
+
+#endif
+	return true;
+}
 
 ////
 //// Video/Display Information (Client-only)
@@ -701,5 +855,44 @@ v2u32 getDisplaySize()
 #	endif // __ANDROID__
 #endif // SERVER
 
-} //namespace porting
 
+////
+//// OS-specific Secure Random
+////
+
+#ifdef WIN32
+
+bool secure_rand_fill_buf(void *buf, size_t len)
+{
+	HCRYPTPROV wctx;
+
+	if (!CryptAcquireContext(&wctx, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+		return false;
+
+	CryptGenRandom(wctx, len, (BYTE *)buf);
+	CryptReleaseContext(wctx, 0);
+	return true;
+}
+
+#else
+
+bool secure_rand_fill_buf(void *buf, size_t len)
+{
+	// N.B.  This function checks *only* for /dev/urandom, because on most
+	// common OSes it is non-blocking, whereas /dev/random is blocking, and it
+	// is exceptionally uncommon for there to be a situation where /dev/random
+	// exists but /dev/urandom does not.  This guesswork is necessary since
+	// random devices are not covered by any POSIX standard...
+	FILE *fp = fopen("/dev/urandom", "rb");
+	if (!fp)
+		return false;
+
+	bool success = fread(buf, len, 1, fp) == 1;
+
+	fclose(fp);
+	return success;
+}
+
+#endif
+
+} //namespace porting

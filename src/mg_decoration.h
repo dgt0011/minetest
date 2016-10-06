@@ -20,14 +20,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef MG_DECORATION_HEADER
 #define MG_DECORATION_HEADER
 
-#include <set>
+#include "util/cpp11_container.h"
 #include "objdef.h"
 #include "noise.h"
 #include "nodedef.h"
 
 class Mapgen;
 class MMVManip;
-class PseudoRandom;
+class PcgRandom;
 class Schematic;
 
 enum DecorationType {
@@ -41,6 +41,7 @@ enum DecorationType {
 #define DECO_PLACE_CENTER_Z  0x04
 #define DECO_USE_NOISE       0x08
 #define DECO_FORCE_PLACEMENT 0x10
+#define DECO_LIQUID_SURFACE  0x20
 
 extern FlagDesc flagdesc_deco[];
 
@@ -70,7 +71,7 @@ public:
 	size_t placeDeco(Mapgen *mg, u32 blockseed, v3s16 nmin, v3s16 nmax);
 	//size_t placeCutoffs(Mapgen *mg, u32 blockseed, v3s16 nmin, v3s16 nmax);
 
-	virtual size_t generate(MMVManip *vm, PseudoRandom *pr, v3s16 p) = 0;
+	virtual size_t generate(MMVManip *vm, PcgRandom *pr, v3s16 p) = 0;
 	virtual int getHeight() = 0;
 
 	u32 flags;
@@ -82,14 +83,14 @@ public:
 	float fill_ratio;
 	NoiseParams np;
 
-	std::set<u8> biomes;
+	UNORDERED_SET<u8> biomes;
 	//std::list<CutoffData> cutoffs;
 	//Mutex cutoff_mutex;
 };
 
 class DecoSimple : public Decoration {
 public:
-	virtual size_t generate(MMVManip *vm, PseudoRandom *pr, v3s16 p);
+	virtual size_t generate(MMVManip *vm, PcgRandom *pr, v3s16 p);
 	bool canPlaceDecoration(MMVManip *vm, v3s16 p);
 	virtual int getHeight();
 
@@ -106,7 +107,7 @@ class DecoSchematic : public Decoration {
 public:
 	DecoSchematic();
 
-	virtual size_t generate(MMVManip *vm, PseudoRandom *pr, v3s16 p);
+	virtual size_t generate(MMVManip *vm, PcgRandom *pr, v3s16 p);
 	virtual int getHeight();
 
 	Rotation rotation;

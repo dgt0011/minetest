@@ -391,7 +391,7 @@ bool getintfield(lua_State *L, int table,
 	lua_getfield(L, table, fieldname);
 	bool got = false;
 	if(lua_isnumber(L, -1)){
-		result = lua_tonumber(L, -1);
+		result = lua_tointeger(L, -1);
 		got = true;
 	}
 	lua_pop(L, 1);
@@ -404,7 +404,7 @@ bool getintfield(lua_State *L, int table,
 	lua_getfield(L, table, fieldname);
 	bool got = false;
 	if(lua_isnumber(L, -1)){
-		result = lua_tonumber(L, -1);
+		result = lua_tointeger(L, -1);
 		got = true;
 	}
 	lua_pop(L, 1);
@@ -417,7 +417,7 @@ bool getintfield(lua_State *L, int table,
 	lua_getfield(L, table, fieldname);
 	bool got = false;
 	if(lua_isnumber(L, -1)){
-		result = lua_tonumber(L, -1);
+		result = lua_tointeger(L, -1);
 		got = true;
 	}
 	lua_pop(L, 1);
@@ -430,7 +430,7 @@ bool getintfield(lua_State *L, int table,
 	lua_getfield(L, table, fieldname);
 	bool got = false;
 	if(lua_isnumber(L, -1)){
-		result = lua_tonumber(L, -1);
+		result = lua_tointeger(L, -1);
 		got = true;
 	}
 	lua_pop(L, 1);
@@ -515,6 +515,15 @@ bool getboolfield_default(lua_State *L, int table,
 	bool result = default_;
 	getboolfield(L, table, fieldname, result);
 	return result;
+}
+
+void setstringfield(lua_State *L, int table,
+		const char *fieldname, const char *value)
+{
+	lua_pushstring(L, value);
+	if(table < 0)
+		table -= 1;
+	lua_setfield(L, table, fieldname);
 }
 
 void setintfield(lua_State *L, int table,

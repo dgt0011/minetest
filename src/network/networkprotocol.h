@@ -132,16 +132,25 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 		Rename GENERIC_CMD_SET_ATTACHMENT to GENERIC_CMD_ATTACH_TO
 	PROTOCOL_VERSION 26:
 		Add TileDef tileable_horizontal, tileable_vertical flags
+	PROTOCOL_VERSION 27:
+		backface_culling: backwards compatibility for playing with
+		newer client on pre-27 servers.
+		Add nodedef v3 - connected nodeboxes
+	PROTOCOL_VERSION 28:
+		CPT2_MESHOPTIONS
 */
 
-#define LATEST_PROTOCOL_VERSION 26
+#define LATEST_PROTOCOL_VERSION 28
 
 // Server's supported network protocol range
 #define SERVER_PROTOCOL_VERSION_MIN 13
 #define SERVER_PROTOCOL_VERSION_MAX LATEST_PROTOCOL_VERSION
 
 // Client's supported network protocol range
-#define CLIENT_PROTOCOL_VERSION_MIN 13
+// The minimal version depends on whether
+// send_pre_v25_init is enabled or not
+#define CLIENT_PROTOCOL_VERSION_MIN 25
+#define CLIENT_PROTOCOL_VERSION_MIN_LEGACY 13
 #define CLIENT_PROTOCOL_VERSION_MAX LATEST_PROTOCOL_VERSION
 
 // Constant that differentiates the protocol from random data and other protocols
@@ -467,6 +476,7 @@ enum ToClientCommand
 		u8 bool vertical
 		u32 len
 		u8[len] texture
+		u8 collision_removal
 	*/
 
 	TOCLIENT_ADD_PARTICLESPAWNER = 0x47,
@@ -488,6 +498,7 @@ enum ToClientCommand
 		u32 len
 		u8[len] texture
 		u32 id
+		u8 collision_removal
 	*/
 
 	TOCLIENT_DELETE_PARTICLESPAWNER_LEGACY = 0x48,

@@ -28,6 +28,7 @@ extern "C" {
 }
 
 #include "irrlichttypes.h"
+#include "threads.h"
 #include "threading/mutex.h"
 #include "threading/mutex_auto_lock.h"
 #include "common/c_types.h"
@@ -63,9 +64,9 @@ public:
 	ScriptApiBase();
 	virtual ~ScriptApiBase();
 
-	bool loadMod(const std::string &script_path, const std::string &mod_name,
-		std::string *error=NULL);
-	bool loadScript(const std::string &script_path, std::string *error=NULL);
+	// These throw a ModError on failure
+	void loadMod(const std::string &script_path, const std::string &mod_name);
+	void loadScript(const std::string &script_path);
 
 	void runCallbacksRaw(int nargs,
 		RunCallbacksMode mode, const char *fxn);
@@ -82,6 +83,7 @@ public:
 
 protected:
 	friend class LuaABM;
+	friend class LuaLBM;
 	friend class InvRef;
 	friend class ObjectRef;
 	friend class NodeMetaRef;
@@ -107,11 +109,12 @@ protected:
 	void objectrefGetOrCreate(lua_State *L, ServerActiveObject *cobj);
 	void objectrefGet(lua_State *L, u16 id);
 
-	Mutex           m_luastackmutex;
+	RecursiveMutex  m_luastackmutex;
 	std::string     m_last_run_mod;
 	bool            m_secure;
 #ifdef SCRIPTAPI_LOCK_DEBUG
-	bool            m_locked;
+	int             m_lock_recursion_count;
+	threadid_t      m_owning_thread;
 #endif
 
 private:

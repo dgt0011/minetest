@@ -1,6 +1,6 @@
 /*
 Minetest
-Copyright (C) 2010-2013 celeron55, Perttu Ahola <celeron55@gmail.com>
+Copyright (C) 2010-2015 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -23,19 +23,21 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "mapgen.h"
 #include "noise.h"
 
-#define AVERAGE_MUD_AMOUNT 4
-#define DESERT_STONE_BASE -32
-#define ICE_BASE 0
-#define FREQ_HOT 0.4
-#define FREQ_SNOW -0.4
-#define FREQ_TAIGA 0.5
-#define FREQ_JUNGLE 0.5
+#define MGV6_AVERAGE_MUD_AMOUNT 4
+#define MGV6_DESERT_STONE_BASE -32
+#define MGV6_ICE_BASE 0
+#define MGV6_FREQ_HOT 0.4
+#define MGV6_FREQ_SNOW -0.4
+#define MGV6_FREQ_TAIGA 0.5
+#define MGV6_FREQ_JUNGLE 0.5
 
 //////////// Mapgen V6 flags
 #define MGV6_JUNGLES    0x01
 #define MGV6_BIOMEBLEND 0x02
 #define MGV6_MUDFLOW    0x04
 #define MGV6_SNOWBIOMES 0x08
+#define MGV6_FLAT       0x10
+#define MGV6_TREES      0x20
 
 
 extern FlagDesc flagdesc_mapgen_v6[];
@@ -51,7 +53,7 @@ enum BiomeV6Type
 };
 
 
-struct MapgenV6Params : public MapgenSpecificParams {
+struct MapgenV6Params : public MapgenParams {
 	u32 spflags;
 	float freq_desert;
 	float freq_beach;
@@ -122,11 +124,14 @@ public:
 	content_t c_mossycobble;
 	content_t c_stair_cobble;
 
-	MapgenV6(int mapgenid, MapgenParams *params, EmergeManager *emerge);
+	MapgenV6(int mapgenid, MapgenV6Params *params, EmergeManager *emerge);
 	~MapgenV6();
+
+	virtual MapgenType getType() const { return MAPGEN_V6; }
 
 	void makeChunk(BlockMakeData *data);
 	int getGroundLevelAtPoint(v2s16 p);
+	int getSpawnLevelAtPoint(v2s16 p);
 
 	float baseTerrainLevel(float terrain_base, float terrain_higher,
 		float steepness, float height_select);
@@ -158,19 +163,5 @@ public:
 	void placeTreesAndJungleGrass();
 	virtual void generateCaves(int max_stone_y);
 };
-
-
-struct MapgenFactoryV6 : public MapgenFactory {
-	Mapgen *createMapgen(int mgid, MapgenParams *params, EmergeManager *emerge)
-	{
-		return new MapgenV6(mgid, params, emerge);
-	};
-
-	MapgenSpecificParams *createMapgenParams()
-	{
-		return new MapgenV6Params();
-	};
-};
-
 
 #endif

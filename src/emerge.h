@@ -97,8 +97,16 @@ public:
 	u32 gen_notify_on;
 	std::set<u32> gen_notify_on_deco_ids;
 
-	// Map generation parameters
-	MapgenParams params;
+	// Parameters passed to mapgens owned by ServerMap
+	// TODO(hmmmm): Remove this after mapgen helper methods using them
+	// are moved to ServerMap
+	MapgenParams *mgparams;
+
+	// Hackish workaround:
+	// For now, EmergeManager must hold onto a ptr to the Map's setting manager
+	// since the Map can only be accessed through the Environment, and the
+	// Environment is not created until after script initialization.
+	MapSettingsManager *map_settings_mgr;
 
 	// Managers of various map generation-related components
 	BiomeManager *biomemgr;
@@ -110,8 +118,7 @@ public:
 	EmergeManager(IGameDef *gamedef);
 	~EmergeManager();
 
-	void loadMapgenParams();
-	void initMapgens();
+	bool initMapgens(MapgenParams *mgparams);
 
 	void startThreads();
 	void stopThreads();
@@ -136,12 +143,10 @@ public:
 
 	// Mapgen helpers methods
 	Biome *getBiomeAtPoint(v3s16 p);
+	int getSpawnLevelAtPoint(v2s16 p);
 	int getGroundLevelAtPoint(v2s16 p);
 	bool isBlockUnderground(v3s16 blockpos);
 
-	static MapgenFactory *getMapgenFactory(const std::string &mgname);
-	static void getMapgenNames(
-		std::vector<const char *> *mgnames, bool include_hidden);
 	static v3s16 getContainingChunk(v3s16 blockpos, s16 chunksize);
 
 private:
@@ -159,11 +164,20 @@ private:
 
 	// Requires m_queue_mutex held
 	EmergeThread *getOptimalThread();
-	bool pushBlockEmergeData(v3s16 pos, u16 peer_requested, u16 flags,
-		EmergeCompletionCallback callback, void *callback_param);
+
+	bool pushBlockEmergeData(
+		v3s16 pos,
+		u16 peer_requested,
+		u16 flags,
+		EmergeCompletionCallback callback,
+		void *callback_param,
+		bool *entry_already_exists);
+
 	bool popBlockEmergeData(v3s16 pos, BlockEmergeData *bedata);
 
 	friend class EmergeThread;
+
+	DISABLE_CLASS_COPY(EmergeManager);
 };
 
 #endif

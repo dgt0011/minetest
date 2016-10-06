@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.
 #if __cplusplus >= 201103L && !defined(_WIN32)
 	#include <mutex>
 	using Mutex = std::mutex;
+	using RecursiveMutex = std::recursive_mutex;
 #else
 
 #ifdef _WIN32
@@ -44,6 +45,7 @@ DEALINGS IN THE SOFTWARE.
 	#include <pthread.h>
 #endif
 
+#include "util/basic_macros.h"
 
 class Mutex
 {
@@ -53,12 +55,25 @@ public:
 	void lock();
 	void unlock();
 
+protected:
+	Mutex(bool recursive);
+	void init_mutex(bool recursive);
 private:
 #ifdef _WIN32
 	CRITICAL_SECTION mutex;
 #else // pthread
 	pthread_mutex_t mutex;
 #endif
+
+	DISABLE_CLASS_COPY(Mutex);
+};
+
+class RecursiveMutex : public Mutex
+{
+public:
+	RecursiveMutex();
+
+	DISABLE_CLASS_COPY(RecursiveMutex);
 };
 
 #endif  // C++11

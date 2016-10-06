@@ -25,7 +25,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "settings.h"
 #include "craftdef.h"
 #include "rollback_interface.h"
-#include "strfnd.h"
+#include "util/strfnd.h"
 
 #define PP(x) "("<<(x).X<<","<<(x).Y<<","<<(x).Z<<")"
 
@@ -886,7 +886,7 @@ bool getCraftingResult(Inventory *inv, ItemStack& result,
 		std::vector<ItemStack> &output_replacements,
 		bool decrementInput, IGameDef *gamedef)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	result.clear();
 

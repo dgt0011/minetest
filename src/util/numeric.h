@@ -20,6 +20,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef UTIL_NUMERIC_HEADER
 #define UTIL_NUMERIC_HEADER
 
+#include "basic_macros.h"
 #include "../irrlichttypes.h"
 #include "../irr_v2d.h"
 #include "../irr_v3d.h"
@@ -28,7 +29,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <list>
 #include <map>
 #include <vector>
-#include <algorithm>
 
 
 /*
@@ -166,9 +166,6 @@ inline v3s16 arealim(v3s16 p, s16 d)
 	return p;
 }
 
-#define ARRLEN(x) (sizeof(x) / sizeof((x)[0]))
-#define CONTAINS(c, v) (std::find((c).begin(), (c).end(), (v)) != (c).end())
-
 // The naive swap performs better than the xor version
 #define SWAP(t, x, y) do { \
 	t temp = x;            \
@@ -279,12 +276,6 @@ bool isBlockInSight(v3s16 blockpos_b, v3f camera_pos, v3f camera_dir,
 		f32 camera_fov, f32 range, f32 *distance_ptr=NULL);
 
 /*
-	Some helper stuff
-*/
-#define MYMIN(a,b) ((a)<(b)?(a):(b))
-#define MYMAX(a,b) ((a)>(b)?(a):(b))
-
-/*
 	Returns nearest 32-bit integer for given floating point number.
 	<cmath> and <math.h> in VC++ don't provide round().
 */
@@ -319,9 +310,9 @@ inline v3f intToFloat(v3s16 p, f32 d)
 }
 
 // Random helper. Usually d=BS
-inline core::aabbox3d<f32> getNodeBox(v3s16 p, float d)
+inline aabb3f getNodeBox(v3s16 p, float d)
 {
-	return core::aabbox3d<f32>(
+	return aabb3f(
 		(float)p.X * d - 0.5*d,
 		(float)p.Y * d - 0.5*d,
 		(float)p.Z * d - 0.5*d,

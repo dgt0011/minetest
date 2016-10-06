@@ -39,27 +39,30 @@ NodeTimerRef* NodeTimerRef::checkobject(lua_State *L, int narg)
 
 int NodeTimerRef::l_set(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;
 	f32 t = luaL_checknumber(L,2);
 	f32 e = luaL_checknumber(L,3);
-	env->getMap().setNodeTimer(o->m_p,NodeTimer(t,e));
+	env->getMap().setNodeTimer(NodeTimer(t, e, o->m_p));
 	return 0;
 }
 
 int NodeTimerRef::l_start(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;
 	f32 t = luaL_checknumber(L,2);
-	env->getMap().setNodeTimer(o->m_p,NodeTimer(t,0));
+	env->getMap().setNodeTimer(NodeTimer(t, 0, o->m_p));
 	return 0;
 }
 
 int NodeTimerRef::l_stop(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;
@@ -69,6 +72,7 @@ int NodeTimerRef::l_stop(lua_State *L)
 
 int NodeTimerRef::l_is_started(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;
@@ -80,6 +84,7 @@ int NodeTimerRef::l_is_started(lua_State *L)
 
 int NodeTimerRef::l_get_timeout(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;
@@ -91,6 +96,7 @@ int NodeTimerRef::l_get_timeout(lua_State *L)
 
 int NodeTimerRef::l_get_elapsed(lua_State *L)
 {
+	MAP_LOCK_REQUIRED;
 	NodeTimerRef *o = checkobject(L, 1);
 	ServerEnvironment *env = o->m_env;
 	if(env == NULL) return 0;

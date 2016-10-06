@@ -23,7 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <sstream>
 #include "log.h"
 #include "itemdef.h"
-#include "strfnd.h"
+#include "util/strfnd.h"
 #include "content_mapnode.h" // For loading legacy MaterialItems
 #include "nameidmapping.h" // For loading legacy MaterialItems
 #include "util/serialize.h"
@@ -126,7 +126,7 @@ ItemStack::ItemStack(std::string name_, u16 count_,
 
 void ItemStack::serialize(std::ostream &os) const
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	if(empty())
 		return;
@@ -151,7 +151,7 @@ void ItemStack::serialize(std::ostream &os) const
 
 void ItemStack::deSerialize(std::istream &is, IItemDefManager *itemdef)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	clear();
 
@@ -218,7 +218,7 @@ void ItemStack::deSerialize(std::istream &is, IItemDefManager *itemdef)
 		Strfnd fnd(all);
 		fnd.next("\"");
 		// If didn't skip to end, we have ""s
-		if(!fnd.atend()){
+		if(!fnd.at_end()){
 			name = fnd.next("\"");
 		} else { // No luck, just read a word then
 			fnd.start(all);
@@ -246,7 +246,7 @@ void ItemStack::deSerialize(std::istream &is, IItemDefManager *itemdef)
 		Strfnd fnd(all);
 		fnd.next("\"");
 		// If didn't skip to end, we have ""s
-		if(!fnd.atend()){
+		if(!fnd.at_end()){
 			name = fnd.next("\"");
 		} else { // No luck, just read a word then
 			fnd.start(all);
@@ -335,8 +335,9 @@ ItemStack ItemStack::addItem(const ItemStack &newitem_,
 		*this = newitem;
 		newitem.clear();
 	}
-	// If item name differs, bail out
-	else if(name != newitem.name)
+	// If item name or metadata differs, bail out 
+	else if (name != newitem.name
+		|| metadata != newitem.metadata)
 	{
 		// cannot be added
 	}
@@ -374,8 +375,9 @@ bool ItemStack::itemFits(const ItemStack &newitem_,
 	{
 		newitem.clear();
 	}
-	// If item name differs, bail out
-	else if(name != newitem.name)
+	// If item name or metadata differs, bail out 
+	else if (name != newitem.name
+		|| metadata != newitem.metadata)
 	{
 		// cannot be added
 	}

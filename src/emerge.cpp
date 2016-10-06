@@ -34,11 +34,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "log.h"
 #include "map.h"
 #include "mapblock.h"
-#include "mapgen_fractal.h"
-#include "mapgen_v5.h"
-#include "mapgen_v6.h"
-#include "mapgen_v7.h"
-#include "mapgen_singlenode.h"
 #include "mg_biome.h"
 #include "mg_ore.h"
 #include "mg_decoration.h"
@@ -50,13 +45,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "serverobject.h"
 #include "settings.h"
 #include "voxel.h"
-
-
-struct MapgenDesc {
-	const char *name;
-	MapgenFactory *factory;
-	bool is_user_visible;
-};
 
 class EmergeThread : public Thread {
 public:
@@ -95,18 +83,6 @@ private:
 		std::map<v3s16, MapBlock *> *modified_blocks);
 
 	friend class EmergeManager;
-};
-
-////
-//// Built-in mapgens
-////
-
-MapgenDesc g_reg_mapgens[] = {
-	{"v5",         new MapgenFactoryV5,         true},
-	{"v6",         new MapgenFactoryV6,         true},
-	{"v7",         new MapgenFactoryV7,         true},
-	{"fractal",    new MapgenFactoryFractal,    false},
-	{"singlenode", new MapgenFactorySinglenode, false},
 };
 
 ////
@@ -177,49 +153,29 @@ EmergeManager::~EmergeManager()
 	delete oremgr;
 	delete decomgr;
 	delete schemmgr;
-
-	delete params.sparams;
 }
 
 
-void EmergeManager::loadMapgenParams()
-{
-	params.load(*g_settings);
-}
-
-
-void EmergeManager::initMapgens()
+bool EmergeManager::initMapgens(MapgenParams *params)
 {
 	if (m_mapgens.size())
-		return;
+		return false;
 
-	MapgenFactory *mgfactory = getMapgenFactory(params.mg_name);
-	if (!mgfactory) {
-		errorstream << "EmergeManager: mapgen " << params.mg_name <<
-			" not registered; falling back to " << DEFAULT_MAPGEN << std::endl;
-
-		params.mg_name = DEFAULT_MAPGEN;
-
-		mgfactory = getMapgenFactory(params.mg_name);
-		FATAL_ERROR_IF(mgfactory == NULL, "Couldn't use any mapgen!");
-	}
-
-	if (!params.sparams) {
-		params.sparams = mgfactory->createMapgenParams();
-		params.sparams->readParams(g_settings);
-	}
+	this->mgparams = params;
 
 	for (u32 i = 0; i != m_threads.size(); i++) {
-		Mapgen *mg = mgfactory->createMapgen(i, &params, this);
+		Mapgen *mg = Mapgen::createMapgen(params->mgtype, i, params, this);
 		m_mapgens.push_back(mg);
 	}
+
+	return true;
 }
 
 
 Mapgen *EmergeManager::getCurrentMapgen()
 {
 	for (u32 i = 0; i != m_threads.size(); i++) {
-		if (m_threads[i]->isSameThread())
+		if (m_threads[i]->isCurrentThread())
 			return m_threads[i]->m_mapgen;
 	}
 
@@ -288,13 +244,17 @@ bool EmergeManager::enqueueBlockEmergeEx(
 	void *callback_param)
 {
 	EmergeThread *thread = NULL;
+	bool entry_already_exists = false;
 
 	{
 		MutexAutoLock queuelock(m_queue_mutex);
 
 		if (!pushBlockEmergeData(blockpos, peer_id, flags,
-				callback, callback_param))
+				callback, callback_param, &entry_already_exists))
 			return false;
+
+		if (entry_already_exists)
+			return true;
 
 		thread = getOptimalThread();
 		thread->pushBlock(blockpos);
@@ -310,12 +270,14 @@ bool EmergeManager::enqueueBlockEmergeEx(
 // Mapgen-related helper functions
 //
 
+
+// TODO(hmmmm): Move this to ServerMap
 v3s16 EmergeManager::getContainingChunk(v3s16 blockpos)
 {
-	return getContainingChunk(blockpos, params.chunksize);
+	return getContainingChunk(blockpos, mgparams->chunksize);
 }
 
-
+// TODO(hmmmm): Move this to ServerMap
 v3s16 EmergeManager::getContainingChunk(v3s16 blockpos, s16 chunksize)
 {
 	s16 coff = -chunksize / 2;
@@ -323,6 +285,18 @@ v3s16 EmergeManager::getContainingChunk(v3s16 blockpos, s16 chunksize)
 
 	return getContainerPos(blockpos - chunk_offset, chunksize)
 		* chunksize + chunk_offset;
+}
+
+
+int EmergeManager::getSpawnLevelAtPoint(v2s16 p)
+{
+	if (m_mapgens.size() == 0 || !m_mapgens[0]) {
+		errorstream << "EmergeManager: getSpawnLevelAtPoint() called"
+			" before mapgen init" << std::endl;
+		return 0;
+	}
+
+	return m_mapgens[0]->getSpawnLevelAtPoint(p);
 }
 
 
@@ -337,7 +311,7 @@ int EmergeManager::getGroundLevelAtPoint(v2s16 p)
 	return m_mapgens[0]->getGroundLevelAtPoint(p);
 }
 
-
+// TODO(hmmmm): Move this to ServerMap
 bool EmergeManager::isBlockUnderground(v3s16 blockpos)
 {
 #if 0
@@ -348,37 +322,16 @@ bool EmergeManager::isBlockUnderground(v3s16 blockpos)
 #endif
 
 	// Use a simple heuristic; the above method is wildly inaccurate anyway.
-	return blockpos.Y * (MAP_BLOCKSIZE + 1) <= params.water_level;
+	return blockpos.Y * (MAP_BLOCKSIZE + 1) <= mgparams->water_level;
 }
-
-
-void EmergeManager::getMapgenNames(
-	std::vector<const char *> *mgnames, bool include_hidden)
-{
-	for (u32 i = 0; i != ARRLEN(g_reg_mapgens); i++) {
-		if (include_hidden || g_reg_mapgens[i].is_user_visible)
-			mgnames->push_back(g_reg_mapgens[i].name);
-	}
-}
-
-
-MapgenFactory *EmergeManager::getMapgenFactory(const std::string &mgname)
-{
-	for (u32 i = 0; i != ARRLEN(g_reg_mapgens); i++) {
-		if (mgname == g_reg_mapgens[i].name)
-			return g_reg_mapgens[i].factory;
-	}
-
-	return NULL;
-}
-
 
 bool EmergeManager::pushBlockEmergeData(
 	v3s16 pos,
 	u16 peer_requested,
 	u16 flags,
 	EmergeCompletionCallback callback,
-	void *callback_param)
+	void *callback_param,
+	bool *entry_already_exists)
 {
 	u16 &count_peer = m_peer_queue_count[peer_requested];
 
@@ -398,12 +351,12 @@ bool EmergeManager::pushBlockEmergeData(
 	findres = m_blocks_enqueued.insert(std::make_pair(pos, BlockEmergeData()));
 
 	BlockEmergeData &bedata = findres.first->second;
-	bool update_existing    = !findres.second;
+	*entry_already_exists   = !findres.second;
 
 	if (callback)
 		bedata.callbacks.push_back(std::make_pair(callback, callback_param));
 
-	if (update_existing) {
+	if (*entry_already_exists) {
 		bedata.flags |= flags;
 	} else {
 		bedata.flags = flags;
@@ -476,7 +429,7 @@ EmergeThread::EmergeThread(Server *server, int ethreadid) :
 	m_emerge(NULL),
 	m_mapgen(NULL)
 {
-	name = "Emerge-" + itos(ethreadid);
+	m_name = "Emerge-" + itos(ethreadid);
 }
 
 
@@ -627,7 +580,7 @@ MapBlock *EmergeThread::finishGen(v3s16 pos, BlockMakeData *bmdata,
 
 void *EmergeThread::run()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	BEGIN_DEBUG_EXCEPTION_HANDLER
 
 	v3s16 pos;
@@ -700,6 +653,6 @@ void *EmergeThread::run()
 		m_server->setAsyncFatalError(err.str());
 	}
 
-	END_DEBUG_EXCEPTION_HANDLER(errorstream)
+	END_DEBUG_EXCEPTION_HANDLER
 	return NULL;
 }

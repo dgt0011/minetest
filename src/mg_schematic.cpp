@@ -94,7 +94,7 @@ void Schematic::resolveNodeNames()
 }
 
 
-void Schematic::blitToVManip(v3s16 p, MMVManip *vm, Rotation rot, bool force_place)
+void Schematic::blitToVManip(MMVManip *vm, v3s16 p, Rotation rot, bool force_place)
 {
 	sanity_check(m_ndef != NULL);
 
@@ -175,20 +175,21 @@ void Schematic::blitToVManip(v3s16 p, MMVManip *vm, Rotation rot, bool force_pla
 }
 
 
-void Schematic::placeStructure(Map *map, v3s16 p, u32 flags,
+bool Schematic::placeOnVManip(MMVManip *vm, v3s16 p, u32 flags,
 	Rotation rot, bool force_place)
 {
-	assert(schemdata != NULL); // Pre-condition
+	assert(vm != NULL);
+	assert(schemdata != NULL);
 	sanity_check(m_ndef != NULL);
 
-	MMVManip *vm = new MMVManip(map);
-
+	//// Determine effective rotation and effective schematic dimensions
 	if (rot == ROTATE_RAND)
 		rot = (Rotation)myrand_range(ROTATE_0, ROTATE_270);
 
 	v3s16 s = (rot == ROTATE_90 || rot == ROTATE_270) ?
-				v3s16(size.Z, size.Y, size.X) : size;
+		v3s16(size.Z, size.Y, size.X) : size;
 
+	//// Adjust placement position if necessary
 	if (flags & DECO_PLACE_CENTER_X)
 		p.X -= (s.X + 1) / 2;
 	if (flags & DECO_PLACE_CENTER_Y)
@@ -196,25 +197,60 @@ void Schematic::placeStructure(Map *map, v3s16 p, u32 flags,
 	if (flags & DECO_PLACE_CENTER_Z)
 		p.Z -= (s.Z + 1) / 2;
 
-	v3s16 bp1 = getNodeBlockPos(p);
-	v3s16 bp2 = getNodeBlockPos(p + s - v3s16(1,1,1));
-	vm->initialEmerge(bp1, bp2);
+	blitToVManip(vm, p, rot, force_place);
 
-	blitToVManip(p, vm, rot, force_place);
+	return vm->m_area.contains(VoxelArea(p, p + s - v3s16(1,1,1)));
+}
 
+void Schematic::placeOnMap(Map *map, v3s16 p, u32 flags,
+	Rotation rot, bool force_place)
+{
 	std::map<v3s16, MapBlock *> lighting_modified_blocks;
 	std::map<v3s16, MapBlock *> modified_blocks;
-	vm->blitBackAll(&modified_blocks);
+	std::map<v3s16, MapBlock *>::iterator it;
 
+	assert(map != NULL);
+	assert(schemdata != NULL);
+	sanity_check(m_ndef != NULL);
+
+	//// Determine effective rotation and effective schematic dimensions
+	if (rot == ROTATE_RAND)
+		rot = (Rotation)myrand_range(ROTATE_0, ROTATE_270);
+
+	v3s16 s = (rot == ROTATE_90 || rot == ROTATE_270) ?
+			v3s16(size.Z, size.Y, size.X) : size;
+
+	//// Adjust placement position if necessary
+	if (flags & DECO_PLACE_CENTER_X)
+		p.X -= (s.X + 1) / 2;
+	if (flags & DECO_PLACE_CENTER_Y)
+		p.Y -= (s.Y + 1) / 2;
+	if (flags & DECO_PLACE_CENTER_Z)
+		p.Z -= (s.Z + 1) / 2;
+
+	//// Create VManip for effected area, emerge our area, modify area
+	//// inside VManip, then blit back.
+	v3s16 bp1 = getNodeBlockPos(p);
+	v3s16 bp2 = getNodeBlockPos(p + s - v3s16(1,1,1));
+
+	MMVManip vm(map);
+	vm.initialEmerge(bp1, bp2);
+
+	blitToVManip(&vm, p, rot, force_place);
+
+	vm.blitBackAll(&modified_blocks);
+
+	//// Carry out post-map-modification actions
+
+	//// Update lighting
 	// TODO: Optimize this by using Mapgen::calcLighting() instead
 	lighting_modified_blocks.insert(modified_blocks.begin(), modified_blocks.end());
 	map->updateLighting(lighting_modified_blocks, modified_blocks);
 
+	//// Create & dispatch map modification events to observers
 	MapEditEvent event;
 	event.type = MEET_OTHER;
-	for (std::map<v3s16, MapBlock *>::iterator
-		it = modified_blocks.begin();
-		it != modified_blocks.end(); ++it)
+	for (it = modified_blocks.begin(); it != modified_blocks.end(); ++it)
 		event.modified_blocks.insert(it->first);
 
 	map->dispatchEvent(&event);
@@ -231,7 +267,7 @@ bool Schematic::deserializeFromMts(std::istream *is,
 	//// Read signature
 	u32 signature = readU32(ss);
 	if (signature != MTSCHEM_FILE_SIGNATURE) {
-		errorstream << "Schematic::deserializeFromMts: invalid schematic "
+		errorstream << __FUNCTION__ << ": invalid schematic "
 			"file" << std::endl;
 		return false;
 	}
@@ -239,7 +275,7 @@ bool Schematic::deserializeFromMts(std::istream *is,
 	//// Read version
 	u16 version = readU16(ss);
 	if (version > MTSCHEM_FILE_VER_HIGHEST_READ) {
-		errorstream << "Schematic::deserializeFromMts: unsupported schematic "
+		errorstream << __FUNCTION__ << ": unsupported schematic "
 			"file version" << std::endl;
 		return false;
 	}
@@ -403,7 +439,7 @@ bool Schematic::loadSchematicFromFile(const std::string &filename,
 {
 	std::ifstream is(filename.c_str(), std::ios_base::binary);
 	if (!is.good()) {
-		errorstream << "Schematic::loadSchematicFile: unable to open file '"
+		errorstream << __FUNCTION__ << ": unable to open file '"
 			<< filename << "'" << std::endl;
 		return false;
 	}
@@ -412,16 +448,18 @@ bool Schematic::loadSchematicFromFile(const std::string &filename,
 	if (!deserializeFromMts(&is, &m_nodenames))
 		return false;
 
+	m_nnlistsizes.push_back(m_nodenames.size() - origsize);
+
+	name = filename;
+
 	if (replace_names) {
-		for (size_t i = origsize; i != m_nodenames.size(); i++) {
-			std::string &name = m_nodenames[i];
-			StringMap::iterator it = replace_names->find(name);
+		for (size_t i = origsize; i < m_nodenames.size(); i++) {
+			std::string &node_name = m_nodenames[i];
+			StringMap::iterator it = replace_names->find(node_name);
 			if (it != replace_names->end())
-				name = it->second;
+				node_name = it->second;
 		}
 	}
-
-	m_nnlistsizes.push_back(m_nodenames.size() - origsize);
 
 	if (ndef)
 		ndef->pendNodeResolve(this);

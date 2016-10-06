@@ -27,13 +27,32 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <vector>
 #include <map>
 #include <sstream>
+#include <iomanip>
 #include <cctype>
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+// Checks whether a value is an ASCII printable character
+#define IS_ASCII_PRINTABLE_CHAR(x)   \
+	(((unsigned int)(x) >= 0x20) &&  \
+	( (unsigned int)(x) <= 0x7e))
+
 // Checks whether a byte is an inner byte for an utf-8 multibyte sequence
-#define IS_UTF8_MULTB_INNER(x) (((unsigned char)x >= 0x80) && ((unsigned char)x < 0xc0))
+#define IS_UTF8_MULTB_INNER(x)       \
+	(((unsigned char)(x) >= 0x80) && \
+	( (unsigned char)(x) <= 0xbf))
+
+// Checks whether a byte is a start byte for an utf-8 multibyte sequence
+#define IS_UTF8_MULTB_START(x)       \
+	(((unsigned char)(x) >= 0xc2) && \
+	( (unsigned char)(x) <= 0xf4))
+
+// Given a start byte x for an utf-8 multibyte sequence
+// it gives the length of the whole sequence in bytes.
+#define UTF8_MULTB_START_LEN(x)            \
+	(((unsigned char)(x) < 0xe0) ? 2 :     \
+	(((unsigned char)(x) < 0xf0) ? 3 : 4))
 
 typedef std::map<std::string, std::string> StringMap;
 
@@ -59,8 +78,8 @@ wchar_t *narrow_to_wide_c(const char *str);
 std::wstring narrow_to_wide(const std::string &mbs);
 std::string wide_to_narrow(const std::wstring &wcs);
 
-std::string urlencode(std::string str);
-std::string urldecode(std::string str);
+std::string urlencode(const std::string &str);
+std::string urldecode(const std::string &str);
 u32 readFlagString(std::string str, const FlagDesc *flagdesc, u32 *flagmask);
 std::string writeFlagString(u32 flags, const FlagDesc *flagdesc, u32 flagmask);
 size_t mystrlcpy(char *dst, const char *src, size_t size);
@@ -281,15 +300,6 @@ inline s32 mystoi(const std::string &str, s32 min, s32 max)
 }
 
 
-/// Returns a 64-bit value represented by the string \p str (decimal).
-inline s64 stoi64(const std::string &str)
-{
-	std::stringstream tmp(str);
-	s64 t;
-	tmp >> t;
-	return t;
-}
-
 // MSVC2010 includes it's own versions of these
 //#if !defined(_MSC_VER) || _MSC_VER < 1600
 
@@ -328,23 +338,70 @@ inline float mystof(const std::string &str)
 #define stoi mystoi
 #define stof mystof
 
-// TODO: Replace with C++11 std::to_string.
-
-/// Returns A string representing the value \p val.
+/// Returns a value represented by the string \p val.
 template <typename T>
-inline std::string to_string(T val)
+inline T from_string(const std::string &str)
 {
-	std::ostringstream oss;
+	std::stringstream tmp(str);
+	T t;
+	tmp >> t;
+	return t;
+}
+
+/// Returns a 64-bit signed value represented by the string \p str (decimal).
+inline s64 stoi64(const std::string &str) { return from_string<s64>(str); }
+
+#if __cplusplus < 201103L
+namespace std {
+
+/// Returns a string representing the value \p val.
+template <typename T>
+inline string to_string(T val)
+{
+	ostringstream oss;
 	oss << val;
 	return oss.str();
 }
+#define DEFINE_STD_TOSTRING_FLOATINGPOINT(T)		\
+	template <>					\
+	inline string to_string<T>(T val)		\
+	{						\
+		ostringstream oss;			\
+		oss << std::fixed			\
+			<< std::setprecision(6)		\
+			<< val;				\
+		return oss.str();			\
+	}
+DEFINE_STD_TOSTRING_FLOATINGPOINT(float)
+DEFINE_STD_TOSTRING_FLOATINGPOINT(double)
+DEFINE_STD_TOSTRING_FLOATINGPOINT(long double)
+
+#undef DEFINE_STD_TOSTRING_FLOATINGPOINT
+
+/// Returns a wide string representing the value \p val
+template <typename T>
+inline wstring to_wstring(T val)
+{
+      return utf8_to_wide(to_string(val));
+}
+}
+#endif
 
 /// Returns a string representing the decimal value of the 32-bit value \p i.
-inline std::string itos(s32 i) { return to_string(i); }
+inline std::string itos(s32 i) { return std::to_string(i); }
 /// Returns a string representing the decimal value of the 64-bit value \p i.
-inline std::string i64tos(s64 i) { return to_string(i); }
+inline std::string i64tos(s64 i) { return std::to_string(i); }
+
+// std::to_string uses the '%.6f' conversion, which is inconsistent with
+// std::ostream::operator<<() and impractical too.  ftos() uses the
+// more generic and std::ostream::operator<<()-compatible '%G' format.
 /// Returns a string representing the decimal value of the float value \p f.
-inline std::string ftos(float f) { return to_string(f); }
+inline std::string ftos(float f)
+{
+	std::ostringstream oss;
+	oss << f;
+	return oss.str();
+}
 
 
 /**
@@ -363,7 +420,6 @@ inline void str_replace(std::string &str, const std::string &pattern,
 		start = str.find(pattern, start + replacement.size());
 	}
 }
-
 
 /**
  * Replace all occurrences of the character \p from in \p str with \p to.
@@ -447,7 +503,7 @@ inline std::string wrap_rows(const std::string &from,
  * Removes backslashes from an escaped string (FormSpec strings)
  */
 template <typename T>
-inline std::basic_string<T> unescape_string(std::basic_string<T> &s)
+inline std::basic_string<T> unescape_string(const std::basic_string<T> &s)
 {
 	std::basic_string<T> res;
 
@@ -463,6 +519,72 @@ inline std::basic_string<T> unescape_string(std::basic_string<T> &s)
 	return res;
 }
 
+/**
+ * Remove all escape sequences in \p s.
+ *
+ * @param s The string in which to remove escape sequences.
+ * @return \p s, with escape sequences removed.
+ */
+template <typename T>
+std::basic_string<T> unescape_enriched(const std::basic_string<T> &s)
+{
+	std::basic_string<T> output;
+	size_t i = 0;
+	while (i < s.length()) {
+		if (s[i] == '\x1b') {
+			++i;
+			if (i == s.length()) continue;
+			if (s[i] == '(') {
+				++i;
+				while (i < s.length() && s[i] != ')') {
+					if (s[i] == '\\') {
+						++i;
+					}
+					++i;
+				}
+				++i;
+			} else {
+				++i;
+			}
+			continue;
+		}
+		output += s[i];
+		++i;
+	}
+	return output;
+}
+
+template <typename T>
+std::vector<std::basic_string<T> > split(const std::basic_string<T> &s, T delim)
+{
+	std::vector<std::basic_string<T> > tokens;
+
+	std::basic_string<T> current;
+	bool last_was_escape = false;
+	for (size_t i = 0; i < s.length(); i++) {
+		T si = s[i];
+		if (last_was_escape) {
+			current += '\\';
+			current += si;
+			last_was_escape = false;
+		} else {
+			if (si == delim) {
+				tokens.push_back(current);
+				current = std::basic_string<T>();
+				last_was_escape = false;
+			} else if (si == '\\') {
+				last_was_escape = true;
+			} else {
+				current += si;
+				last_was_escape = false;
+			}
+		}
+	}
+	//push last element
+	tokens.push_back(current);
+
+	return tokens;
+}
 
 /**
  * Checks that all characters in \p to_check are a decimal digits.

@@ -28,6 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <IMeshManipulator.h>
 #include "gamedef.h"
 #include "log.h"
+#include "noise.h"
 
 
 // Create a cuboid.
@@ -163,6 +164,14 @@ void makeCuboid(MeshCollector *collector, const aabb3f &box,
 	}
 }
 
+static inline void getNeighborConnectingFace(v3s16 p, INodeDefManager *nodedef,
+		MeshMakeData *data, MapNode n, int v, int *neighbors)
+{
+	MapNode n2 = data->m_vmanip.getNodeNoEx(p);
+	if (nodedef->nodeboxConnects(n, n2, v))
+		*neighbors |= v;
+}
+
 /*
 	TODO: Fix alpha blending for special nodes
 	Currently only the last element rendered is blended correct
@@ -171,7 +180,6 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 		MeshCollector &collector)
 {
 	INodeDefManager *nodedef = data->m_gamedef->ndef();
-	ITextureSource *tsrc = data->m_gamedef->tsrc();
 	scene::ISceneManager* smgr = data->m_gamedef->getSceneManager();
 	scene::IMeshManipulator* meshmanip = smgr->getMeshManipulator();
 
@@ -182,11 +190,6 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 		Some settings
 	*/
 	bool enable_mesh_cache	= g_settings->getBool("enable_mesh_cache");
-	bool new_style_water = g_settings->getBool("new_style_water");
-
-	float node_liquid_level = 1.0;
-	if (new_style_water)
-		node_liquid_level = 0.85;
 
 	v3s16 blockpos_nodes = data->m_blockpos*MAP_BLOCKSIZE;
 
@@ -288,35 +291,29 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 					If our topside is liquid, set upper border of face
 					at upper border of node
 				*/
-				if(top_is_same_liquid)
-				{
-					vertices[2].Pos.Y = 0.5*BS;
-					vertices[3].Pos.Y = 0.5*BS;
-				}
+				if (top_is_same_liquid) {
+					vertices[2].Pos.Y = 0.5 * BS;
+					vertices[3].Pos.Y = 0.5 * BS;
+				} else {
 				/*
 					Otherwise upper position of face is liquid level
 				*/
-				else
-				{
-					vertices[2].Pos.Y = (node_liquid_level-0.5)*BS;
-					vertices[3].Pos.Y = (node_liquid_level-0.5)*BS;
+					vertices[2].Pos.Y = 0.5 * BS;
+					vertices[3].Pos.Y = 0.5 * BS;
 				}
 				/*
 					If neighbor is liquid, lower border of face is liquid level
 				*/
-				if(neighbor_is_same_liquid)
-				{
-					vertices[0].Pos.Y = (node_liquid_level-0.5)*BS;
-					vertices[1].Pos.Y = (node_liquid_level-0.5)*BS;
-				}
+				if (neighbor_is_same_liquid) {
+					vertices[0].Pos.Y = 0.5 * BS;
+					vertices[1].Pos.Y = 0.5 * BS;
+				} else {
 				/*
 					If neighbor is not liquid, lower border of face is
 					lower border of node
 				*/
-				else
-				{
-					vertices[0].Pos.Y = -0.5*BS;
-					vertices[1].Pos.Y = -0.5*BS;
+					vertices[0].Pos.Y = -0.5 * BS;
+					vertices[1].Pos.Y = -0.5 * BS;
 				}
 
 				for(s32 j=0; j<4; j++)
@@ -359,7 +356,7 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 				video::S3DVertex(-BS/2,0,-BS/2, 0,0,0, c, 0,0),
 			};
 
-			v3f offset(p.X*BS, p.Y*BS + (-0.5+node_liquid_level)*BS, p.Z*BS);
+			v3f offset(p.X * BS, (p.Y + 0.5) * BS, p.Z * BS);
 			for(s32 i=0; i<4; i++)
 			{
 				vertices[i].Pos += offset;
@@ -432,14 +429,14 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 					content = n2.getContent();
 
 					if(n2.getContent() == c_source)
-						level = (-0.5+node_liquid_level) * BS;
+						level = 0.5 * BS;
 					else if(n2.getContent() == c_flowing){
 						u8 liquid_level = (n2.param2&LIQUID_LEVEL_MASK);
 						if (liquid_level <= LIQUID_LEVEL_MAX+1-range)
 							liquid_level = 0;
 						else
 							liquid_level -= (LIQUID_LEVEL_MAX+1-range);
-						level = (-0.5 + ((float)liquid_level+ 0.5) / (float)range * node_liquid_level) * BS;
+						level = (-0.5 + ((float)liquid_level + 0.5) / (float)range) * BS;
 					}
 
 					// Check node above neighbor.
@@ -487,7 +484,7 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 					// Source is always the same height
 					else if(content == c_source)
 					{
-						cornerlevel = (-0.5+node_liquid_level)*BS;
+						cornerlevel = 0.5 * BS;
 						valid_count = 1;
 						break;
 					}
@@ -1108,6 +1105,8 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 		break;}
 		case NDT_PLANTLIKE:
 		{
+			PseudoRandom rng(x<<8 | z | y<<16);
+
 			TileSpec tile = getNodeTileN(n, p, 0, data);
 			tile.material_flags |= MATERIAL_FLAG_CRACK_OVERLAY;
 
@@ -1115,9 +1114,18 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 			video::SColor c = MapBlock_LightColor(255, l, f.light_source);
 
 			float s = BS / 2 * f.visual_scale;
+			// add sqrt(2) visual scale
+			if ((f.param_type_2 == CPT2_MESHOPTIONS) && ((n.param2 & 0x10) != 0))
+				s *= 1.41421;
 
-			for (int j = 0; j < 2; j++)
-			{
+			float random_offset_X = .0;
+			float random_offset_Z = .0;
+			if ((f.param_type_2 == CPT2_MESHOPTIONS) && ((n.param2 & 0x8) != 0)) {
+				random_offset_X = BS * ((rng.next() % 16 / 16.0) * 0.29 - 0.145);
+				random_offset_Z = BS * ((rng.next() % 16 / 16.0) * 0.29 - 0.145);
+			}
+
+			for (int j = 0; j < 4; j++) {
 				video::S3DVertex vertices[4] =
 				{
 					video::S3DVertex(-s,-BS/2, 0, 0,0,0, c, 0,1),
@@ -1125,28 +1133,146 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 					video::S3DVertex( s,-BS/2 + s*2,0, 0,0,0, c, 1,0),
 					video::S3DVertex(-s,-BS/2 + s*2,0, 0,0,0, c, 0,0),
 				};
+
 				float rotate_degree = 0;
+				u8 p2mesh = 0;
 				if (f.param_type_2 == CPT2_DEGROTATE)
 					rotate_degree = n.param2 * 2;
-
-				if (j == 0) {
-					for(u16 i = 0; i < 4; i++)
-						vertices[i].Pos.rotateXZBy(46 + rotate_degree);
-				} else if (j == 1) {
-					for(u16 i = 0; i < 4; i++)
-						vertices[i].Pos.rotateXZBy(-44 + rotate_degree);
+				else if (f.param_type_2 != CPT2_MESHOPTIONS) {
+					if (j == 0) {
+						for (u16 i = 0; i < 4; i++)
+							vertices[i].Pos.rotateXZBy(46 + rotate_degree);
+					} else if (j == 1) {
+						for (u16 i = 0; i < 4; i++)
+							vertices[i].Pos.rotateXZBy(-44 + rotate_degree);
+					}
+				} else {
+					p2mesh = n.param2 & 0x7;
+					switch (p2mesh) {
+					case 0:
+						// x
+						if (j == 0) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(46);
+						} else if (j == 1) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(-44);
+						}
+						break;
+					case 1:
+						// +
+						if (j == 0) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(91);
+						} else if (j == 1) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(1);
+						}
+						break;
+					case 2:
+						// *
+						if (j == 0) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(121);
+						} else if (j == 1) {
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(241);
+						} else { // (j == 2)
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(1);
+						}
+						break;
+					case 3:
+						// #
+						switch (j) {
+						case 0:
+							for (u16 i = 0; i < 4; i++) {
+								vertices[i].Pos.rotateXZBy(1);
+								vertices[i].Pos.Z += BS / 4;
+							}
+							break;
+						case 1:
+							for (u16 i = 0; i < 4; i++) {
+								vertices[i].Pos.rotateXZBy(91);
+								vertices[i].Pos.X += BS / 4;
+							}
+							break;
+						case 2:
+							for (u16 i = 0; i < 4; i++) {
+								vertices[i].Pos.rotateXZBy(181);
+								vertices[i].Pos.Z -= BS / 4;
+							}
+							break;
+						case 3:
+							for (u16 i = 0; i < 4; i++) {
+								vertices[i].Pos.rotateXZBy(271);
+								vertices[i].Pos.X -= BS / 4;
+							}
+							break;
+						}
+						break;
+					case 4:
+						// outward leaning #-like
+						switch (j) {
+						case 0:
+							for (u16 i = 2; i < 4; i++)
+								vertices[i].Pos.Z -= BS / 2;
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(1);
+							break;
+						case 1:
+							for (u16 i = 2; i < 4; i++)
+								vertices[i].Pos.Z -= BS / 2;
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(91);
+							break;
+						case 2:
+							for (u16 i = 2; i < 4; i++)
+								vertices[i].Pos.Z -= BS / 2;
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(181);
+							break;
+						case 3:
+							for (u16 i = 2; i < 4; i++)
+								vertices[i].Pos.Z -= BS / 2;
+							for (u16 i = 0; i < 4; i++)
+								vertices[i].Pos.rotateXZBy(271);
+							break;
+						}
+						break;
+					}
 				}
 
-				for (int i = 0; i < 4; i++)
-				{
+				for (int i = 0; i < 4; i++) {
 					vertices[i].Pos *= f.visual_scale;
 					vertices[i].Pos.Y += BS/2 * (f.visual_scale - 1);
 					vertices[i].Pos += intToFloat(p, BS);
+					// move to a random spot to avoid moire
+					if ((f.param_type_2 == CPT2_MESHOPTIONS) && ((n.param2 & 0x8) != 0)) {
+						vertices[i].Pos.X += random_offset_X;
+						vertices[i].Pos.Z += random_offset_Z;
+					}
+					// randomly move each face up/down
+					if ((f.param_type_2 == CPT2_MESHOPTIONS) && ((n.param2 & 0x20) != 0)) {
+						PseudoRandom yrng(j | x<<16 | z<<8 | y<<24 );
+						vertices[i].Pos.Y -= BS * ((yrng.next() % 16 / 16.0) * 0.125);
+					}
 				}
 
 				u16 indices[] = {0, 1, 2, 2, 3, 0};
 				// Add to mesh collector
 				collector.append(tile, vertices, 4, indices, 6);
+
+				// stop adding faces for meshes with less than 4 faces
+				if (f.param_type_2 == CPT2_MESHOPTIONS) {
+					if (((p2mesh == 0) || (p2mesh == 1)) && (j == 1))
+						break;
+					else if ((p2mesh == 2) && (j == 2))
+						break;
+				} else if (j == 1) {
+					break;
+				}
+
 			}
 		break;}
 		case NDT_FIRELIKE:
@@ -1513,7 +1639,38 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 
 			v3f pos = intToFloat(p, BS);
 
-			std::vector<aabb3f> boxes = n.getNodeBoxes(nodedef);
+			int neighbors = 0;
+
+			// locate possible neighboring nodes to connect to
+			if (f.node_box.type == NODEBOX_CONNECTED) {
+				v3s16 p2 = p;
+
+				p2.Y++;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 1, &neighbors);
+
+				p2 = p;
+				p2.Y--;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 2, &neighbors);
+
+				p2 = p;
+				p2.Z--;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 4, &neighbors);
+
+				p2 = p;
+				p2.X--;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 8, &neighbors);
+
+				p2 = p;
+				p2.Z++;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 16, &neighbors);
+
+				p2 = p;
+				p2.X++;
+				getNeighborConnectingFace(blockpos_nodes + p2, nodedef, data, n, 32, &neighbors);
+			}
+
+			std::vector<aabb3f> boxes;
+			n.getNodeBoxes(nodedef, &boxes, neighbors);
 			for(std::vector<aabb3f>::iterator
 					i = boxes.begin();
 					i != boxes.end(); ++i)
@@ -1613,56 +1770,6 @@ void mapblock_mesh_generate_special(MeshMakeData *data,
 				mesh->drop();
 			}
 		break;}
-		}
-	}
-
-	/*
-		Caused by incorrect alpha blending, selection mesh needs to be created as
-		last element to ensure it gets blended correct over nodes with alpha channel
-	*/
-	// Create selection mesh
-	v3s16 p = data->m_highlighted_pos_relative;
-	if (data->m_show_hud &&
-			(p.X >= 0) && (p.X < MAP_BLOCKSIZE) &&
-			(p.Y >= 0) && (p.Y < MAP_BLOCKSIZE) &&
-			(p.Z >= 0) && (p.Z < MAP_BLOCKSIZE)) {
-
-		MapNode n = data->m_vmanip.getNodeNoEx(blockpos_nodes + p);
-		if(n.getContent() != CONTENT_AIR) {
-			// Get selection mesh light level
-			static const v3s16 dirs[7] = {
-					v3s16( 0, 0, 0),
-					v3s16( 0, 1, 0),
-					v3s16( 0,-1, 0),
-					v3s16( 1, 0, 0),
-					v3s16(-1, 0, 0),
-					v3s16( 0, 0, 1),
-					v3s16( 0, 0,-1)
-			};
-
-			u16 l = 0;
-			u16 l1 = 0;
-			for (u8 i = 0; i < 7; i++) {
-				MapNode n1 = data->m_vmanip.getNodeNoEx(blockpos_nodes + p + dirs[i]);
-				l1 = getInteriorLight(n1, -4, nodedef);
-				if (l1 > l)
-					l = l1;
-			}
-			video::SColor c = MapBlock_LightColor(255, l, 0);
-			data->m_highlight_mesh_color = c;
-			std::vector<aabb3f> boxes = n.getSelectionBoxes(nodedef);
-			TileSpec h_tile;
-			h_tile.material_flags |= MATERIAL_FLAG_HIGHLIGHTED;
-			h_tile.texture = tsrc->getTextureForMesh("halo.png",&h_tile.texture_id);
-			v3f pos = intToFloat(p, BS);
-			f32 d = 0.05 * BS;
-			for (std::vector<aabb3f>::iterator i = boxes.begin();
-					i != boxes.end(); ++i) {
-				aabb3f box = *i;
-				box.MinEdge += v3f(-d, -d, -d) + pos;
-				box.MaxEdge += v3f(d, d, d) + pos;
-				makeCuboid(&collector, box, &h_tile, 1, c, NULL);
-			}
 		}
 	}
 }

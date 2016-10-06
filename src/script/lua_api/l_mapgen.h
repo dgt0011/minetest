@@ -40,6 +40,18 @@ private:
 	// set mapgen parameters
 	static int l_set_mapgen_params(lua_State *L);
 
+	// get_mapgen_setting(name)
+	static int l_get_mapgen_setting(lua_State *L);
+
+	// set_mapgen_setting(name, value, override_meta)
+	static int l_set_mapgen_setting(lua_State *L);
+
+	// get_mapgen_setting_noiseparams(name)
+	static int l_get_mapgen_setting_noiseparams(lua_State *L);
+
+	// set_mapgen_setting_noiseparams(name, value, override_meta)
+	static int l_set_mapgen_setting_noiseparams(lua_State *L);
+
 	// set_noiseparam_defaults(name, noiseparams, set_default)
 	static int l_set_noiseparams(lua_State *L);
 
@@ -85,8 +97,12 @@ private:
 	// create_schematic(p1, p2, probability_list, filename)
 	static int l_create_schematic(lua_State *L);
 
-	// place_schematic(p, schematic, rotation, replacement)
+	// place_schematic(p, schematic, rotation, replacements, force_placement)
 	static int l_place_schematic(lua_State *L);
+
+	// place_schematic_on_vmanip(vm, p, schematic,
+	//     rotation, replacements, force_placement)
+	static int l_place_schematic_on_vmanip(lua_State *L);
 
 	// serialize_schematic(schematic, format, options={...})
 	static int l_serialize_schematic(lua_State *L);

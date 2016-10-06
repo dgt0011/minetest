@@ -31,7 +31,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "filesys.h"
 #include "convert_json.h"
 #include "serverlist.h"
-#include "emerge.h"
+#include "mapgen.h"
 #include "sound.h"
 #include "settings.h"
 #include "log.h"
@@ -707,7 +707,7 @@ int ModApiMainMenu::l_set_topleft_text(lua_State *L)
 int ModApiMainMenu::l_get_mapgen_names(lua_State *L)
 {
 	std::vector<const char *> names;
-	EmergeManager::getMapgenNames(&names, lua_toboolean(L, 1));
+	Mapgen::getMapgenNames(&names, lua_toboolean(L, 1));
 
 	lua_newtable(L);
 	for (size_t i = 0; i != names.size(); i++) {
@@ -1059,8 +1059,8 @@ int ModApiMainMenu::l_get_video_modes(lua_State *L)
 /******************************************************************************/
 int ModApiMainMenu::l_gettext(lua_State *L)
 {
-	std::wstring wtext = wstrgettext((std::string) luaL_checkstring(L, 1));
-	lua_pushstring(L, wide_to_utf8(wtext).c_str());
+	std::string text = strgettext(std::string(luaL_checkstring(L, 1)));
+	lua_pushstring(L, text.c_str());
 
 	return 1;
 }
@@ -1095,7 +1095,9 @@ int ModApiMainMenu::l_get_screen_info(lua_State *L)
 /******************************************************************************/
 int ModApiMainMenu::l_get_min_supp_proto(lua_State *L)
 {
-	lua_pushinteger(L, CLIENT_PROTOCOL_VERSION_MIN);
+	u16 proto_version_min = g_settings->getFlag("send_pre_v25_init") ?
+		CLIENT_PROTOCOL_VERSION_MIN_LEGACY : CLIENT_PROTOCOL_VERSION_MIN;
+	lua_pushinteger(L, proto_version_min);
 	return 1;
 }
 

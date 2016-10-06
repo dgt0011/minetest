@@ -88,7 +88,7 @@ private:
 
 void *ServerThread::run()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	BEGIN_DEBUG_EXCEPTION_HANDLER
 
 	m_server->AsyncRunStep(true);
@@ -112,7 +112,7 @@ void *ServerThread::run()
 		}
 	}
 
-	END_DEBUG_EXCEPTION_HANDLER(errorstream)
+	END_DEBUG_EXCEPTION_HANDLER
 
 	return NULL;
 }
@@ -148,7 +148,8 @@ Server::Server(
 		const std::string &path_world,
 		const SubgameSpec &gamespec,
 		bool simple_singleplayer_mode,
-		bool ipv6
+		bool ipv6,
+		ChatInterface *iface
 	):
 	m_path_world(path_world),
 	m_gamespec(gamespec),
@@ -175,6 +176,7 @@ Server::Server(
 	m_clients(&m_con),
 	m_shutdown_requested(false),
 	m_shutdown_ask_reconnect(false),
+	m_admin_chat(iface),
 	m_ignore_map_edit_events(false),
 	m_ignore_map_edit_events_peer_id(0),
 	m_next_sound_id(0)
@@ -264,9 +266,6 @@ Server::Server(
 	//lock environment
 	MutexAutoLock envlock(m_env_mutex);
 
-	// Load mapgen params from Settings
-	m_emerge->loadMapgenParams();
-
 	// Create the Map (loads map_meta.txt, overriding configured mapgen params)
 	ServerMap *servermap = new ServerMap(path_world, this, m_emerge);
 
@@ -276,11 +275,8 @@ Server::Server(
 	m_script = new GameScripting(this);
 
 	std::string script_path = getBuiltinLuaPath() + DIR_DELIM "init.lua";
-	std::string error_msg;
 
-	if (!m_script->loadMod(script_path, BUILTIN_MOD_NAME, &error_msg))
-		throw ModError("Failed to load and run " + script_path
-				+ "\nError from Lua:\n" + error_msg);
+	m_script->loadMod(script_path, BUILTIN_MOD_NAME);
 
 	// Print mods
 	infostream << "Server: Loading mods: ";
@@ -291,26 +287,18 @@ Server::Server(
 	}
 	infostream << std::endl;
 	// Load and run "mod" scripts
-	for (std::vector<ModSpec>::iterator i = m_mods.begin();
-			i != m_mods.end(); ++i) {
-		const ModSpec &mod = *i;
+	for (std::vector<ModSpec>::iterator it = m_mods.begin();
+			it != m_mods.end(); ++it) {
+		const ModSpec &mod = *it;
 		if (!string_allowed(mod.name, MODNAME_ALLOWED_CHARS)) {
-			std::ostringstream err;
-			err << "Error loading mod \"" << mod.name
-					<< "\": mod_name does not follow naming conventions: "
-					<< "Only chararacters [a-z0-9_] are allowed." << std::endl;
-			errorstream << err.str().c_str();
-			throw ModError(err.str());
+			throw ModError("Error loading mod \"" + mod.name +
+				"\": Mod name does not follow naming conventions: "
+				"Only chararacters [a-z0-9_] are allowed.");
 		}
-		std::string script_path = mod.path + DIR_DELIM "init.lua";
+		std::string script_path = mod.path + DIR_DELIM + "init.lua";
 		infostream << "  [" << padStringRight(mod.name, 12) << "] [\""
 				<< script_path << "\"]" << std::endl;
-		if (!m_script->loadMod(script_path, mod.name, &error_msg)) {
-			errorstream << "Server: Failed to load and run "
-					<< script_path << std::endl;
-			throw ModError("Failed to load and run " + script_path
-					+ "\nError from Lua:\n" + error_msg);
-		}
+		m_script->loadMod(script_path, mod.name);
 	}
 
 	// Read Textures and calculate sha1 sums
@@ -329,6 +317,9 @@ Server::Server(
 	// Perform pending node name resolutions
 	m_nodedef->runNodeResolveCallbacks();
 
+	// unmap node names for connected nodeboxes
+	m_nodedef->mapNodeboxConnections();
+
 	// init the recipe hashes to speed up crafting
 	m_craftdef->initHashes(this);
 
@@ -337,8 +328,11 @@ Server::Server(
 
 	m_clients.setEnv(m_env);
 
+	if (!servermap->settings_mgr.makeMapgenParams())
+		FATAL_ERROR("Couldn't create any mapgen type");
+
 	// Initialize mapgens
-	m_emerge->initMapgens();
+	m_emerge->initMapgens(servermap->getMapgenParams());
 
 	m_enable_rollback_recording = g_settings->getBool("enable_rollback_recording");
 	if (m_enable_rollback_recording) {
@@ -353,10 +347,11 @@ Server::Server(
 	servermap->addEventReceiver(this);
 
 	// If file exists, load environment metadata
-	if(fs::PathExists(m_path_world + DIR_DELIM "env_meta.txt"))
-	{
-		infostream<<"Server: Loading environment metadata"<<std::endl;
+	if (fs::PathExists(m_path_world + DIR_DELIM "env_meta.txt")) {
+		infostream << "Server: Loading environment metadata" << std::endl;
 		m_env->loadMeta();
+	} else {
+		m_env->loadDefaultMeta();
 	}
 
 	// Add some test ActiveBlockModifiers to environment
@@ -407,11 +402,8 @@ Server::~Server()
 	m_emerge->stopThreads();
 
 	// Delete things in the reverse order of creation
-	delete m_env;
-
-	// N.B. the EmergeManager should be deleted after the Environment since Map
-	// depends on EmergeManager to write its current params to the map meta
 	delete m_emerge;
+	delete m_env;
 	delete m_rollback;
 	delete m_banmanager;
 	delete m_event;
@@ -433,7 +425,7 @@ Server::~Server()
 
 void Server::start(Address bind_addr)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	m_bind_addr = bind_addr;
 
@@ -466,7 +458,7 @@ void Server::start(Address bind_addr)
 
 void Server::stop()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	infostream<<"Server: Stopping and waiting threads"<<std::endl;
 
@@ -481,9 +473,9 @@ void Server::stop()
 
 void Server::step(float dtime)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	// Limit a bit
-	if(dtime > 2.0)
+	if (dtime > 2.0)
 		dtime = 2.0;
 	{
 		MutexAutoLock lock(m_step_dtime_mutex);
@@ -491,25 +483,19 @@ void Server::step(float dtime)
 	}
 	// Throw if fatal error occurred in thread
 	std::string async_err = m_async_fatal_error.get();
-	if(async_err != "") {
-		if (m_simple_singleplayer_mode) {
-			throw ServerError(async_err);
-		}
-		else {
+	if (!async_err.empty()) {
+		if (!m_simple_singleplayer_mode) {
 			m_env->kickAllPlayers(SERVER_ACCESSDENIED_CRASH,
 				g_settings->get("kick_msg_crash"),
 				g_settings->getBool("ask_reconnect_on_crash"));
-			errorstream << "UNRECOVERABLE error occurred. Stopping server. "
-					<< "Please fix the following error:" << std::endl
-					<< async_err << std::endl;
-			FATAL_ERROR(async_err.c_str());
 		}
+		throw ServerError(async_err);
 	}
 }
 
 void Server::AsyncRunStep(bool initial_step)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	g_profiler->add("Server::AsyncRunStep (num)", 1);
 
@@ -593,6 +579,22 @@ void Server::AsyncRunStep(bool initial_step)
 	}
 
 	/*
+		Listen to the admin chat, if available
+	*/
+	if (m_admin_chat) {
+		if (!m_admin_chat->command_queue.empty()) {
+			MutexAutoLock lock(m_env_mutex);
+			while (!m_admin_chat->command_queue.empty()) {
+				ChatEvent *evt = m_admin_chat->command_queue.pop_frontNoEx();
+				handleChatInterfaceEvent(evt);
+				delete evt;
+			}
+		}
+		m_admin_chat->outgoing_queue.push_back(
+			new ChatEventTimeInfo(m_env->getGameTime(), m_env->getTimeOfDay()));
+	}
+
+	/*
 		Do background stuff
 	*/
 
@@ -650,7 +652,7 @@ void Server::AsyncRunStep(bool initial_step)
 					m_env->getGameTime(),
 					m_lag,
 					m_gamespec.id,
-					m_emerge->params.mg_name,
+					Mapgen::getMapgenName(m_emerge->mgparams->mgtype),
 					m_mods);
 			counter = 0.01;
 		}
@@ -670,15 +672,17 @@ void Server::AsyncRunStep(bool initial_step)
 		ScopeProfiler sp(g_profiler, "Server: checking added and deleted objs");
 
 		// Radius inside which objects are active
-		s16 radius = g_settings->getS16("active_object_send_range_blocks");
-		s16 player_radius = g_settings->getS16("player_transfer_distance");
+		static const s16 radius =
+			g_settings->getS16("active_object_send_range_blocks") * MAP_BLOCKSIZE;
 
-		if (player_radius == 0 && g_settings->exists("unlimited_player_transfer_distance") &&
-				!g_settings->getBool("unlimited_player_transfer_distance"))
+		// Radius inside which players are active
+		static const bool is_transfer_limited =
+			g_settings->exists("unlimited_player_transfer_distance") &&
+			!g_settings->getBool("unlimited_player_transfer_distance");
+		static const s16 player_transfer_dist = g_settings->getS16("player_transfer_distance") * MAP_BLOCKSIZE;
+		s16 player_radius = player_transfer_dist;
+		if (player_radius == 0 && is_transfer_limited)
 			player_radius = radius;
-
-		radius *= MAP_BLOCKSIZE;
-		player_radius *= MAP_BLOCKSIZE;
 
 		for (std::map<u16, RemoteClient*>::iterator
 			i = clients.begin();
@@ -693,7 +697,7 @@ void Server::AsyncRunStep(bool initial_step)
 			Player *player = m_env->getPlayer(client->peer_id);
 			if(player == NULL) {
 				// This can happen if the client timeouts somehow
-				/*infostream<<"WARNING: "<<__FUNCTION_NAME<<": Client "
+				/*warningstream<<FUNCTION_NAME<<": Client "
 						<<client->peer_id
 						<<" has no associated player"<<std::endl;*/
 				continue;
@@ -746,7 +750,7 @@ void Server::AsyncRunStep(bool initial_step)
 				// Get object type
 				u8 type = ACTIVEOBJECT_TYPE_INVALID;
 				if(obj == NULL)
-					infostream<<"WARNING: "<<__FUNCTION_NAME
+					warningstream<<FUNCTION_NAME
 							<<": NULL object"<<std::endl;
 				else
 					type = obj->getSendType();
@@ -931,7 +935,7 @@ void Server::AsyncRunStep(bool initial_step)
 				break;
 			default:
 				prof.add("unknown", 1);
-				infostream << "WARNING: Server: Unknown MapEditEvent "
+				warningstream << "Server: Unknown MapEditEvent "
 						<< ((u32)event->type) << std::endl;
 				break;
 			}
@@ -983,8 +987,7 @@ void Server::AsyncRunStep(bool initial_step)
 	{
 		float &counter = m_emergethread_trigger_timer;
 		counter += dtime;
-		if(counter >= 2.0)
-		{
+		if (counter >= 2.0) {
 			counter = 0.0;
 
 			m_emerge->startThreads();
@@ -995,8 +998,9 @@ void Server::AsyncRunStep(bool initial_step)
 	{
 		float &counter = m_savemap_timer;
 		counter += dtime;
-		if(counter >= g_settings->getFloat("server_map_save_interval"))
-		{
+		static const float save_interval =
+			g_settings->getFloat("server_map_save_interval");
+		if (counter >= save_interval) {
 			counter = 0.0;
 			MutexAutoLock lock(m_env_mutex);
 
@@ -1021,7 +1025,7 @@ void Server::AsyncRunStep(bool initial_step)
 
 void Server::Receive()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	SharedBuffer<u8> data;
 	u16 peer_id;
 	try {
@@ -1114,20 +1118,6 @@ PlayerSAO* Server::StageTwoClientInit(u16 peer_id)
 	if(!m_simple_singleplayer_mode) {
 		// Send information about server to player in chat
 		SendChatMessage(peer_id, getStatusString());
-
-		// Send information about joining in chat
-		{
-			std::wstring name = L"unknown";
-			Player *player = m_env->getPlayer(peer_id);
-			if(player != NULL)
-				name = narrow_to_wide(player->getName());
-
-			std::wstring message;
-			message += L"*** ";
-			message += name;
-			message += L" joined the game.";
-			SendChatMessage(PEER_ID_INEXISTENT,message);
-		}
 	}
 	Address addr = getPeerAddress(player->peer_id);
 	std::string ip_str = addr.serializeString();
@@ -1158,7 +1148,7 @@ inline void Server::handleCommand(NetworkPacket* pkt)
 
 void Server::ProcessData(NetworkPacket *pkt)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	// Environment is locked first.
 	MutexAutoLock envlock(m_env_mutex);
 
@@ -1354,7 +1344,7 @@ void Server::SetBlocksNotSent(std::map<v3s16, MapBlock *>& block)
 
 void Server::peerAdded(con::Peer *peer)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	verbosestream<<"Server::peerAdded(): peer->id="
 			<<peer->id<<std::endl;
 
@@ -1367,7 +1357,7 @@ void Server::peerAdded(con::Peer *peer)
 
 void Server::deletingPeer(con::Peer *peer, bool timeout)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	verbosestream<<"Server::deletingPeer(): peer->id="
 			<<peer->id<<", timeout="<<timeout<<std::endl;
 
@@ -1449,6 +1439,16 @@ void Server::handlePeerChanges()
 	}
 }
 
+void Server::printToConsoleOnly(const std::string &text)
+{
+	if (m_admin_chat) {
+		m_admin_chat->outgoing_queue.push_back(
+			new ChatEventChat("", utf8_to_wide(text)));
+	} else {
+		std::cout << text << std::endl;
+	}
+}
+
 void Server::Send(NetworkPacket* pkt)
 {
 	m_clients.send(pkt->getPeerId(),
@@ -1459,7 +1459,7 @@ void Server::Send(NetworkPacket* pkt)
 
 void Server::SendMovement(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	std::ostringstream os(std::ios_base::binary);
 
 	NetworkPacket pkt(TOCLIENT_MOVEMENT, 12 * sizeof(float), peer_id);
@@ -1496,7 +1496,7 @@ void Server::SendPlayerHPOrDie(PlayerSAO *playersao)
 
 void Server::SendHP(u16 peer_id, u8 hp)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_HP, 1, peer_id);
 	pkt << hp;
@@ -1505,7 +1505,7 @@ void Server::SendHP(u16 peer_id, u8 hp)
 
 void Server::SendBreath(u16 peer_id, u16 breath)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_BREATH, 2, peer_id);
 	pkt << (u16) breath;
@@ -1529,7 +1529,7 @@ void Server::SendAccessDenied(u16 peer_id, AccessDeniedCode reason,
 
 void Server::SendAccessDenied_Legacy(u16 peer_id,const std::wstring &reason)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_ACCESS_DENIED_LEGACY, 0, peer_id);
 	pkt << reason;
@@ -1539,7 +1539,7 @@ void Server::SendAccessDenied_Legacy(u16 peer_id,const std::wstring &reason)
 void Server::SendDeathscreen(u16 peer_id,bool set_camera_point_target,
 		v3f camera_point_target)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_DEATHSCREEN, 1 + sizeof(v3f), peer_id);
 	pkt << set_camera_point_target << camera_point_target;
@@ -1549,7 +1549,7 @@ void Server::SendDeathscreen(u16 peer_id,bool set_camera_point_target,
 void Server::SendItemDef(u16 peer_id,
 		IItemDefManager *itemdef, u16 protocol_version)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_ITEMDEF, 0, peer_id);
 
@@ -1574,7 +1574,7 @@ void Server::SendItemDef(u16 peer_id,
 void Server::SendNodeDef(u16 peer_id,
 		INodeDefManager *nodedef, u16 protocol_version)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_NODEDEF, 0, peer_id);
 
@@ -1603,7 +1603,7 @@ void Server::SendNodeDef(u16 peer_id,
 
 void Server::SendInventory(PlayerSAO* playerSAO)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	UpdateCrafting(playerSAO->getPlayer());
 
@@ -1624,7 +1624,7 @@ void Server::SendInventory(PlayerSAO* playerSAO)
 
 void Server::SendChatMessage(u16 peer_id, const std::wstring &message)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_CHAT_MESSAGE, 0, peer_id);
 	pkt << message;
@@ -1640,7 +1640,7 @@ void Server::SendChatMessage(u16 peer_id, const std::wstring &message)
 void Server::SendShowFormspecMessage(u16 peer_id, const std::string &formspec,
                                      const std::string &formname)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_SHOW_FORMSPEC, 0 , peer_id);
 
@@ -1653,9 +1653,10 @@ void Server::SendShowFormspecMessage(u16 peer_id, const std::string &formspec,
 // Spawns a particle on peer with peer_id
 void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f acceleration,
 				float expirationtime, float size, bool collisiondetection,
-				bool vertical, std::string texture)
+				bool collision_removal,
+				bool vertical, const std::string &texture)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_SPAWN_PARTICLE, 0, peer_id);
 
@@ -1663,6 +1664,7 @@ void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f accelerat
 			<< size << collisiondetection;
 	pkt.putLongString(texture);
 	pkt << vertical;
+	pkt << collision_removal;
 
 	if (peer_id != PEER_ID_INEXISTENT) {
 		Send(&pkt);
@@ -1675,9 +1677,10 @@ void Server::SendSpawnParticle(u16 peer_id, v3f pos, v3f velocity, v3f accelerat
 // Adds a ParticleSpawner on peer with peer_id
 void Server::SendAddParticleSpawner(u16 peer_id, u16 amount, float spawntime, v3f minpos, v3f maxpos,
 	v3f minvel, v3f maxvel, v3f minacc, v3f maxacc, float minexptime, float maxexptime,
-	float minsize, float maxsize, bool collisiondetection, bool vertical, std::string texture, u32 id)
+	float minsize, float maxsize, bool collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture, u32 id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_ADD_PARTICLESPAWNER, 0, peer_id);
 
@@ -1688,6 +1691,7 @@ void Server::SendAddParticleSpawner(u16 peer_id, u16 amount, float spawntime, v3
 	pkt.putLongString(texture);
 
 	pkt << id << vertical;
+	pkt << collision_removal;
 
 	if (peer_id != PEER_ID_INEXISTENT) {
 		Send(&pkt);
@@ -1699,7 +1703,7 @@ void Server::SendAddParticleSpawner(u16 peer_id, u16 amount, float spawntime, v3
 
 void Server::SendDeleteParticleSpawner(u16 peer_id, u32 id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_DELETE_PARTICLESPAWNER_LEGACY, 2, peer_id);
 
@@ -1809,7 +1813,7 @@ void Server::SendOverrideDayNightRatio(u16 peer_id, bool do_override,
 
 void Server::SendTimeOfDay(u16 peer_id, u16 time, f32 time_speed)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_TIME_OF_DAY, 0, peer_id);
 	pkt << time << time_speed;
@@ -1824,9 +1828,9 @@ void Server::SendTimeOfDay(u16 peer_id, u16 time, f32 time_speed)
 
 void Server::SendPlayerHP(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	// In some rare case, if the player is disconnected
+	// In some rare case if the player is disconnected
 	// while Lua call l_punch, for example, this can be NULL
 	if (!playersao)
 		return;
@@ -1842,7 +1846,7 @@ void Server::SendPlayerHP(u16 peer_id)
 
 void Server::SendPlayerBreath(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
 	assert(playersao);
 
@@ -1852,7 +1856,7 @@ void Server::SendPlayerBreath(u16 peer_id)
 
 void Server::SendMovePlayer(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	Player *player = m_env->getPlayer(peer_id);
 	assert(player);
 
@@ -2120,7 +2124,7 @@ void Server::setBlockNotSent(v3s16 p)
 
 void Server::SendBlockNoLock(u16 peer_id, MapBlock *block, u8 ver, u16 net_proto_version)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	v3s16 p = block->getPos();
 
@@ -2142,7 +2146,7 @@ void Server::SendBlockNoLock(u16 peer_id, MapBlock *block, u8 ver, u16 net_proto
 
 void Server::SendBlocks(float dtime)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	MutexAutoLock envlock(m_env_mutex);
 	//TODO check if one big lock could be faster then multiple small ones
@@ -2212,7 +2216,7 @@ void Server::SendBlocks(float dtime)
 
 void Server::fillMediaCache()
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	infostream<<"Server: Calculating media file checksums"<<std::endl;
 
@@ -2308,7 +2312,7 @@ void Server::fillMediaCache()
 
 void Server::sendMediaAnnouncement(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	verbosestream << "Server: Announcing files to id(" << peer_id << ")"
 		<< std::endl;
@@ -2345,7 +2349,7 @@ struct SendableMedia
 void Server::sendRequestedMedia(u16 peer_id,
 		const std::vector<std::string> &tosend)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	verbosestream<<"Server::sendRequestedMedia(): "
 			<<"Sending files to client"<<std::endl;
@@ -2452,7 +2456,7 @@ void Server::sendRequestedMedia(u16 peer_id,
 void Server::sendDetachedInventory(const std::string &name, u16 peer_id)
 {
 	if(m_detached_inventories.count(name) == 0) {
-		errorstream<<__FUNCTION_NAME<<": \""<<name<<"\" not found"<<std::endl;
+		errorstream<<FUNCTION_NAME<<": \""<<name<<"\" not found"<<std::endl;
 		return;
 	}
 	Inventory *inv = m_detached_inventories[name];
@@ -2477,7 +2481,7 @@ void Server::sendDetachedInventory(const std::string &name, u16 peer_id)
 
 void Server::sendDetachedInventories(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	for(std::map<std::string, Inventory*>::iterator
 			i = m_detached_inventories.begin();
@@ -2494,10 +2498,12 @@ void Server::sendDetachedInventories(u16 peer_id)
 
 void Server::DiePlayer(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
-
+	DSTACK(FUNCTION_NAME);
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	assert(playersao);
+	// In some rare cases this can be NULL -- if the player is disconnected
+	// when a Lua function modifies l_punch, for example
+	if (!playersao)
+		return;
 
 	infostream << "Server::DiePlayer(): Player "
 			<< playersao->getPlayer()->getName()
@@ -2514,7 +2520,7 @@ void Server::DiePlayer(u16 peer_id)
 
 void Server::RespawnPlayer(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	PlayerSAO *playersao = getPlayerSAO(peer_id);
 	assert(playersao);
@@ -2540,7 +2546,7 @@ void Server::RespawnPlayer(u16 peer_id)
 
 void Server::DenySudoAccess(u16 peer_id)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	NetworkPacket pkt(TOCLIENT_DENY_SUDO_MODE, 0, peer_id);
 	Send(&pkt);
@@ -2551,7 +2557,7 @@ void Server::DenyAccessVerCompliant(u16 peer_id, u16 proto_ver, AccessDeniedCode
 		const std::string &str_reason, bool reconnect)
 {
 	if (proto_ver >= 25) {
-		SendAccessDenied(peer_id, reason, str_reason);
+		SendAccessDenied(peer_id, reason, str_reason, reconnect);
 	} else {
 		std::wstring wreason = utf8_to_wide(
 			reason == SERVER_ACCESSDENIED_CUSTOM_STRING ? str_reason :
@@ -2566,7 +2572,7 @@ void Server::DenyAccessVerCompliant(u16 peer_id, u16 proto_ver, AccessDeniedCode
 
 void Server::DenyAccess(u16 peer_id, AccessDeniedCode reason, const std::string &custom_reason)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	SendAccessDenied(peer_id, reason, custom_reason);
 	m_clients.event(peer_id, CSE_SetDenied);
@@ -2577,7 +2583,7 @@ void Server::DenyAccess(u16 peer_id, AccessDeniedCode reason, const std::string 
 // the minimum version for MT users, maybe in 1 year
 void Server::DenyAccess_Legacy(u16 peer_id, const std::wstring &reason)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	SendAccessDenied_Legacy(peer_id, reason);
 	m_clients.event(peer_id, CSE_SetDenied);
@@ -2586,7 +2592,7 @@ void Server::DenyAccess_Legacy(u16 peer_id, const std::wstring &reason)
 
 void Server::acceptAuth(u16 peer_id, bool forSudoMode)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	if (!forSudoMode) {
 		RemoteClient* client = getClient(peer_id, CS_Invalid);
@@ -2617,7 +2623,7 @@ void Server::acceptAuth(u16 peer_id, bool forSudoMode)
 
 void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 	std::wstring message;
 	{
 		/*
@@ -2637,19 +2643,6 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 
 		Player *player = m_env->getPlayer(peer_id);
 
-		// Collect information about leaving in chat
-		{
-			if(player != NULL && reason != CDR_DENY)
-			{
-				std::wstring name = narrow_to_wide(player->getName());
-				message += L"*** ";
-				message += name;
-				message += L" left the game.";
-				if(reason == CDR_TIMEOUT)
-					message += L" (timed out)";
-			}
-		}
-
 		/* Run scripts and remove from environment */
 		{
 			if(player != NULL)
@@ -2657,7 +2650,7 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 				PlayerSAO *playersao = player->getPlayerSAO();
 				assert(playersao);
 
-				m_script->on_leaveplayer(playersao);
+				m_script->on_leaveplayer(playersao, reason == CDR_TIMEOUT);
 
 				playersao->disconnected();
 			}
@@ -2682,9 +2675,13 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 					os << player->getName() << " ";
 				}
 
-				actionstream << player->getName() << " "
+				std::string name = player->getName();
+				actionstream << name << " "
 						<< (reason == CDR_TIMEOUT ? "times out." : "leaves game.")
 						<< " List of players: " << os.str() << std::endl;
+				if (m_admin_chat)
+					m_admin_chat->outgoing_queue.push_back(
+						new ChatEventNick(CET_NICK_REMOVE, name));
 			}
 		}
 		{
@@ -2700,7 +2697,7 @@ void Server::DeleteClient(u16 peer_id, ClientDeletionReason reason)
 
 void Server::UpdateCrafting(Player* player)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	// Get a preview for crafting
 	ItemStack preview;
@@ -2715,6 +2712,102 @@ void Server::UpdateCrafting(Player* player)
 	sanity_check(plist);
 	sanity_check(plist->getSize() >= 1);
 	plist->changeItem(0, preview);
+}
+
+void Server::handleChatInterfaceEvent(ChatEvent *evt)
+{
+	if (evt->type == CET_NICK_ADD) {
+		// The terminal informed us of its nick choice
+		m_admin_nick = ((ChatEventNick *)evt)->nick;
+		if (!m_script->getAuth(m_admin_nick, NULL, NULL)) {
+			errorstream << "You haven't set up an account." << std::endl
+				<< "Please log in using the client as '"
+				<< m_admin_nick << "' with a secure password." << std::endl
+				<< "Until then, you can't execute admin tasks via the console," << std::endl
+				<< "and everybody can claim the user account instead of you," << std::endl
+				<< "giving them full control over this server." << std::endl;
+		}
+	} else {
+		assert(evt->type == CET_CHAT);
+		handleAdminChat((ChatEventChat *)evt);
+	}
+}
+
+std::wstring Server::handleChat(const std::string &name, const std::wstring &wname,
+	const std::wstring &wmessage, bool check_shout_priv,
+	u16 peer_id_to_avoid_sending)
+{
+	// If something goes wrong, this player is to blame
+	RollbackScopeActor rollback_scope(m_rollback,
+		std::string("player:") + name);
+
+	// Line to send
+	std::wstring line;
+	// Whether to send line to the player that sent the message, or to all players
+	bool broadcast_line = true;
+
+	// Run script hook
+	bool ate = m_script->on_chat_message(name,
+		wide_to_utf8(wmessage));
+	// If script ate the message, don't proceed
+	if (ate)
+		return L"";
+
+	// Commands are implemented in Lua, so only catch invalid
+	// commands that were not "eaten" and send an error back
+	if (wmessage[0] == L'/') {
+		std::wstring wcmd = wmessage.substr(1);
+		broadcast_line = false;
+		if (wcmd.length() == 0)
+			line += L"-!- Empty command";
+		else
+			line += L"-!- Invalid command: " + str_split(wcmd, L' ')[0];
+	} else {
+		if (check_shout_priv && !checkPriv(name, "shout")) {
+			line += L"-!- You don't have permission to shout.";
+			broadcast_line = false;
+		} else {
+			line += L"<";
+			line += wname;
+			line += L"> ";
+			line += wmessage;
+		}
+	}
+
+	/*
+		Tell calling method to send the message to sender
+	*/
+	if (!broadcast_line) {
+		return line;
+	} else {
+		/*
+			Send the message to others
+		*/
+		actionstream << "CHAT: " << wide_to_narrow(line) << std::endl;
+
+		std::vector<u16> clients = m_clients.getClientIDs();
+
+		for (u16 i = 0; i < clients.size(); i++) {
+			u16 cid = clients[i];
+			if (cid != peer_id_to_avoid_sending)
+				SendChatMessage(cid, line);
+		}
+	}
+	return L"";
+}
+
+void Server::handleAdminChat(const ChatEventChat *evt)
+{
+	std::string name = evt->nick;
+	std::wstring wname = utf8_to_wide(name);
+	std::wstring wmessage = evt->evt_msg;
+
+	std::wstring answer = handleChat(name, wname, wmessage);
+
+	// If asked to send answer to sender
+	if (!answer.empty()) {
+		m_admin_chat->outgoing_queue.push_back(new ChatEventChat("", answer));
+	}
 }
 
 RemoteClient* Server::getClient(u16 peer_id, ClientState state_min)
@@ -2848,9 +2941,14 @@ void Server::notifyPlayer(const char *name, const std::wstring &msg)
 	if (!m_env)
 		return;
 
+	if (m_admin_nick == name && !m_admin_nick.empty()) {
+		m_admin_chat->outgoing_queue.push_back(new ChatEventChat("", msg));
+	}
+
 	Player *player = m_env->getPlayer(name);
-	if (!player)
+	if (!player) {
 		return;
+	}
 
 	if (player->peer_id == PEER_ID_INEXISTENT)
 		return;
@@ -2915,7 +3013,8 @@ bool Server::hudSetFlags(Player *player, u32 flags, u32 mask)
 		return false;
 
 	SendHUDSetFlags(player->peer_id, flags, mask);
-	player->hud_flags = flags;
+	player->hud_flags &= ~mask;
+	player->hud_flags |= flags;
 
 	PlayerSAO* playersao = player->getPlayerSAO();
 
@@ -3032,7 +3131,8 @@ void Server::notifyPlayers(const std::wstring &msg)
 void Server::spawnParticle(const std::string &playername, v3f pos,
 	v3f velocity, v3f acceleration,
 	float expirationtime, float size, bool
-	collisiondetection, bool vertical, const std::string &texture)
+	collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture)
 {
 	// m_env will be NULL if the server is initializing
 	if (!m_env)
@@ -3047,13 +3147,15 @@ void Server::spawnParticle(const std::string &playername, v3f pos,
 	}
 
 	SendSpawnParticle(peer_id, pos, velocity, acceleration,
-			expirationtime, size, collisiondetection, vertical, texture);
+			expirationtime, size, collisiondetection,
+			collision_removal, vertical, texture);
 }
 
 u32 Server::addParticleSpawner(u16 amount, float spawntime,
 	v3f minpos, v3f maxpos, v3f minvel, v3f maxvel, v3f minacc, v3f maxacc,
 	float minexptime, float maxexptime, float minsize, float maxsize,
-	bool collisiondetection, bool vertical, const std::string &texture,
+	bool collisiondetection, bool collision_removal,
+	bool vertical, const std::string &texture,
 	const std::string &playername)
 {
 	// m_env will be NULL if the server is initializing
@@ -3068,23 +3170,11 @@ u32 Server::addParticleSpawner(u16 amount, float spawntime,
 		peer_id = player->peer_id;
 	}
 
-	u32 id = 0;
-	for(;;) // look for unused particlespawner id
-	{
-		id++;
-		if (std::find(m_particlespawner_ids.begin(),
-				m_particlespawner_ids.end(), id)
-				== m_particlespawner_ids.end())
-		{
-			m_particlespawner_ids.push_back(id);
-			break;
-		}
-	}
-
+	u32 id = m_env->addParticleSpawner(spawntime);
 	SendAddParticleSpawner(peer_id, amount, spawntime,
 		minpos, maxpos, minvel, maxvel, minacc, maxacc,
 		minexptime, maxexptime, minsize, maxsize,
-		collisiondetection, vertical, texture, id);
+		collisiondetection, collision_removal, vertical, texture, id);
 
 	return id;
 }
@@ -3103,17 +3193,12 @@ void Server::deleteParticleSpawner(const std::string &playername, u32 id)
 		peer_id = player->peer_id;
 	}
 
-	m_particlespawner_ids.erase(
-			std::remove(m_particlespawner_ids.begin(),
-			m_particlespawner_ids.end(), id),
-			m_particlespawner_ids.end());
+	m_env->deleteParticleSpawner(id);
 	SendDeleteParticleSpawner(peer_id, id);
 }
 
 void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 {
-	DSTACK(__FUNCTION_NAME);
-
 	actionstream << "Server::SetBrowserAddress address:" << address << std::endl;
 
 	NetworkPacket pkt(TOCLIENT_BROWSER_ADDRESS, 0, peer_id);
@@ -3125,6 +3210,11 @@ void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 	}
 }
 
+void Server::deleteParticleSpawnerAll(u32 id)
+{
+	m_env->deleteParticleSpawner(id);
+	SendDeleteParticleSpawner(PEER_ID_INEXISTENT, id);
+}
 
 Inventory* Server::createDetachedInventory(const std::string &name)
 {
@@ -3279,26 +3369,24 @@ v3f Server::findSpawnPos()
 		return nodeposf * BS;
 	}
 
-	s16 water_level = map.getWaterLevel();
-
 	bool is_good = false;
 
 	// Try to find a good place a few times
-	for(s32 i = 0; i < 1000 && !is_good; i++) {
+	for(s32 i = 0; i < 4000 && !is_good; i++) {
 		s32 range = 1 + i;
 		// We're going to try to throw the player to this position
 		v2s16 nodepos2d = v2s16(
 				-range + (myrand() % (range * 2)),
 				-range + (myrand() % (range * 2)));
 
-		// Get ground height at point
-		s16 groundheight = map.findGroundLevel(nodepos2d);
-		if (groundheight <= water_level) // Don't go underwater
-			continue;
-		if (groundheight > water_level + 6) // Don't go to high places
+		// Get spawn level at point
+		s16 spawn_level = m_emerge->getSpawnLevelAtPoint(nodepos2d);
+		// Continue if MAX_MAP_GENERATION_LIMIT was returned by
+		// the mapgen to signify an unsuitable spawn position
+		if (spawn_level == MAX_MAP_GENERATION_LIMIT)
 			continue;
 
-		v3s16 nodepos(nodepos2d.X, groundheight, nodepos2d.Y);
+		v3s16 nodepos(nodepos2d.X, spawn_level, nodepos2d.Y);
 
 		s32 air_count = 0;
 		for (s32 i = 0; i < 10; i++) {
@@ -3404,15 +3492,17 @@ PlayerSAO* Server::emergePlayer(const char *name, u16 peer_id, u16 proto_version
 
 void dedicated_server_loop(Server &server, bool &kill)
 {
-	DSTACK(__FUNCTION_NAME);
+	DSTACK(FUNCTION_NAME);
 
 	verbosestream<<"dedicated_server_loop()"<<std::endl;
 
 	IntervalLimiter m_profiler_interval;
 
-	for(;;)
-	{
-		float steplen = g_settings->getFloat("dedicated_server_step");
+	static const float steplen = g_settings->getFloat("dedicated_server_step");
+	static const float profiler_print_interval =
+			g_settings->getFloat("profiler_print_interval");
+
+	for(;;) {
 		// This is kind of a hack but can be done like this
 		// because server.step() is very light
 		{
@@ -3434,10 +3524,7 @@ void dedicated_server_loop(Server &server, bool &kill)
 		/*
 			Profiler
 		*/
-		float profiler_print_interval =
-				g_settings->getFloat("profiler_print_interval");
-		if(profiler_print_interval != 0)
-		{
+		if (profiler_print_interval != 0) {
 			if(m_profiler_interval.step(steplen, profiler_print_interval))
 			{
 				infostream<<"Profiler:"<<std::endl;

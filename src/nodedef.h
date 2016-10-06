@@ -65,6 +65,8 @@ enum ContentParamType2
 	CPT2_LEVELED,
 	// 2D rotation for things like plants
 	CPT2_DEGROTATE,
+	// Mesh options for plants
+	CPT2_MESHOPTIONS
 };
 
 enum LiquidType
@@ -80,6 +82,7 @@ enum NodeBoxType
 	NODEBOX_FIXED, // Static separately defined box(es)
 	NODEBOX_WALLMOUNTED, // Box for wall mounted nodes; (top, bottom, side)
 	NODEBOX_LEVELED, // Same as fixed, but with dynamic height from param2. for snow, ...
+	NODEBOX_CONNECTED, // optionally draws nodeboxes if a neighbor node attaches
 };
 
 struct NodeBox
@@ -92,6 +95,13 @@ struct NodeBox
 	aabb3f wall_top;
 	aabb3f wall_bottom;
 	aabb3f wall_side; // being at the -X side
+	// NODEBOX_CONNECTED
+	std::vector<aabb3f> connect_top;
+	std::vector<aabb3f> connect_bottom;
+	std::vector<aabb3f> connect_front;
+	std::vector<aabb3f> connect_left;
+	std::vector<aabb3f> connect_back;
+	std::vector<aabb3f> connect_right;
 
 	NodeBox()
 	{ reset(); }
@@ -103,6 +113,50 @@ struct NodeBox
 
 struct MapNode;
 class NodeMetadata;
+
+enum LeavesStyle {
+	LEAVES_FANCY,
+	LEAVES_SIMPLE,
+	LEAVES_OPAQUE,
+};
+
+class TextureSettings {
+public:
+	LeavesStyle leaves_style;
+	bool opaque_water;
+	bool connected_glass;
+	bool use_normal_texture;
+	bool enable_mesh_cache;
+	bool enable_minimap;
+
+	TextureSettings() {}
+
+	void readSettings();
+};
+
+enum NodeDrawType
+{
+	NDT_NORMAL, // A basic solid block
+	NDT_AIRLIKE, // Nothing is drawn
+	NDT_LIQUID, // Do not draw face towards same kind of flowing/source liquid
+	NDT_FLOWINGLIQUID, // A very special kind of thing
+	NDT_GLASSLIKE, // Glass-like, don't draw faces towards other glass
+	NDT_ALLFACES, // Leaves-like, draw all faces no matter what
+	NDT_ALLFACES_OPTIONAL, // Fancy -> allfaces, fast -> normal
+	NDT_TORCHLIKE,
+	NDT_SIGNLIKE,
+	NDT_PLANTLIKE,
+	NDT_FENCELIKE,
+	NDT_RAILLIKE,
+	NDT_NODEBOX,
+	NDT_GLASSLIKE_FRAMED, // Glass-like, draw connected frames and all all
+	                      // visible faces
+						  // uses 2 textures, one for frames, second for faces
+	NDT_FIRELIKE, // Draw faces slightly rotated and only on connecting nodes,
+	NDT_GLASSLIKE_FRAMED_OPTIONAL,	// enabled -> connected, disabled -> Glass-like
+									// uses 2 textures, one for frames, second for faces
+	NDT_MESH, // Uses static meshes
+};
 
 /*
 	Stand-alone definition of a TileSpec (basically a server-side TileSpec)
@@ -137,31 +191,7 @@ struct TileDef
 	}
 
 	void serialize(std::ostream &os, u16 protocol_version) const;
-	void deSerialize(std::istream &is);
-};
-
-enum NodeDrawType
-{
-	NDT_NORMAL, // A basic solid block
-	NDT_AIRLIKE, // Nothing is drawn
-	NDT_LIQUID, // Do not draw face towards same kind of flowing/source liquid
-	NDT_FLOWINGLIQUID, // A very special kind of thing
-	NDT_GLASSLIKE, // Glass-like, don't draw faces towards other glass
-	NDT_ALLFACES, // Leaves-like, draw all faces no matter what
-	NDT_ALLFACES_OPTIONAL, // Fancy -> allfaces, fast -> normal
-	NDT_TORCHLIKE,
-	NDT_SIGNLIKE,
-	NDT_PLANTLIKE,
-	NDT_FENCELIKE,
-	NDT_RAILLIKE,
-	NDT_NODEBOX,
-	NDT_GLASSLIKE_FRAMED, // Glass-like, draw connected frames and all all
-	                      // visible faces
-						  // uses 2 textures, one for frames, second for faces
-	NDT_FIRELIKE, // Draw faces slightly rotated and only on connecting nodes,
-	NDT_GLASSLIKE_FRAMED_OPTIONAL,	// enabled -> connected, disabled -> Glass-like
-									// uses 2 textures, one for frames, second for faces
-	NDT_MESH, // Uses static meshes
+	void deSerialize(std::istream &is, const u8 contentfeatures_version, const NodeDrawType drawtype);
 };
 
 #define CF_SPECIAL_COUNT 6
@@ -229,6 +259,8 @@ struct ContentFeatures
 	bool climbable;
 	// Player can build on these
 	bool buildable_to;
+	// Liquids flow into and replace node
+	bool floodable;
 	// Player cannot build to these (placement prediction disabled)
 	bool rightclickable;
 	// Flowing liquid or snow, value = default level
@@ -261,11 +293,16 @@ struct ContentFeatures
 	bool legacy_facedir_simple;
 	// Set to true if wall_mounted used to be set to true
 	bool legacy_wallmounted;
+	// for NDT_CONNECTED pairing
+	u8 connect_sides;
 
 	// Sound properties
 	SimpleSoundSpec sound_footstep;
 	SimpleSoundSpec sound_dig;
 	SimpleSoundSpec sound_dug;
+
+	std::vector<std::string> connects_to;
+	std::set<content_t> connects_to_ids;
 
 	/*
 		Methods
@@ -289,6 +326,15 @@ struct ContentFeatures
 		if(!isLiquid() || !f.isLiquid()) return false;
 		return (liquid_alternative_flowing == f.liquid_alternative_flowing);
 	}
+
+#ifndef SERVER
+	void fillTileAttribs(ITextureSource *tsrc, TileSpec *tile, TileDef *tiledef,
+		u32 shader_id, bool use_normal_texture, bool backface_culling,
+		u8 alpha, u8 material_type);
+	void updateTextures(ITextureSource *tsrc, IShaderSource *shdsrc,
+		scene::ISceneManager *smgr, scene::IMeshManipulator *meshmanip,
+		IGameDef *gamedef, const TextureSettings &tsettings);
+#endif
 };
 
 class INodeDefManager {
@@ -301,7 +347,8 @@ public:
 	virtual bool getId(const std::string &name, content_t &result) const=0;
 	virtual content_t getId(const std::string &name) const=0;
 	// Allows "group:name" in addition to regular node names
-	virtual void getIds(const std::string &name, std::set<content_t> &result)
+	// returns false if node name not found, true otherwise
+	virtual bool getIds(const std::string &name, std::set<content_t> &result)
 			const=0;
 	virtual const ContentFeatures &get(const std::string &name) const=0;
 
@@ -311,6 +358,7 @@ public:
 
 	virtual void pendNodeResolve(NodeResolver *nr)=0;
 	virtual bool cancelNodeResolveCallback(NodeResolver *nr)=0;
+	virtual bool nodeboxConnects(const MapNode from, const MapNode to, u8 connect_face)=0;
 };
 
 class IWritableNodeDefManager : public INodeDefManager {
@@ -325,7 +373,7 @@ public:
 	// If not found, returns CONTENT_IGNORE
 	virtual content_t getId(const std::string &name) const=0;
 	// Allows "group:name" in addition to regular node names
-	virtual void getIds(const std::string &name, std::set<content_t> &result)
+	virtual bool getIds(const std::string &name, std::set<content_t> &result)
 		const=0;
 	// If not found, returns the features of CONTENT_UNKNOWN
 	virtual const ContentFeatures &get(const std::string &name) const=0;
@@ -365,6 +413,7 @@ public:
 	virtual bool cancelNodeResolveCallback(NodeResolver *nr)=0;
 	virtual void runNodeResolveCallbacks()=0;
 	virtual void resetNodeResolveState()=0;
+	virtual void mapNodeboxConnections()=0;
 };
 
 IWritableNodeDefManager *createNodeDefManager();
