@@ -713,6 +713,7 @@ assets : $(ASSETS_TIMESTAMP)
 	$(MAKE) clean_assets;                                                      \
 	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
 	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
+	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
 	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
 	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
 	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
