@@ -12,7 +12,7 @@ import java.util.Iterator;
 import java.lang.Object;
  
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -206,7 +206,7 @@ public class MinetestAssetCopy extends Activity
 					
 					if (filename.endsWith(".zip") && filename.startsWith("packed"))
 					{
-						unzip(src,location);
+						unzip(src,baseDir);
 						src.close();
 					}
 					else if (len > 0)
@@ -306,7 +306,7 @@ public class MinetestAssetCopy extends Activity
 					ZipFile zipSize = new ZipFile(z);
 					size += zipSize.size();
 				} catch (IOException e) {
-					Log.e(TAG, e.getLocalizedMessage());
+					Log.e("MinetestAssetCopy", e.getLocalizedMessage());
 				}
 			}
 			return size;
