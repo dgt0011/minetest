@@ -740,7 +740,9 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L Minetest > filelist.txt;                                             \
+	zip -r ../minetest.zip Minetest;											\
+	mv ../minetest.zip Minetest;												\
+	find -L Minetest > filelist.txt;                                            \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
