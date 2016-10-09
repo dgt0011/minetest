@@ -204,7 +204,7 @@ public class MinetestAssetCopy extends Activity
 						}
 					}
 					
-					if (filename.endsWith(".zip") && filename.startsWith("packed")
+					if (filename.endsWith(".zip") && filename.startsWith("packed"))
 					{
 						unzip(src,location);
 						src.close();
