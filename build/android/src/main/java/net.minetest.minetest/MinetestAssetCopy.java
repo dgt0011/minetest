@@ -10,12 +10,6 @@ import java.io.OutputStream;
 import java.util.Vector;
 import java.util.Iterator;
 import java.lang.Object;
- 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 import android.app.Activity;
 import android.content.res.AssetFileDescriptor;
@@ -203,13 +197,7 @@ public class MinetestAssetCopy extends Activity
 							len = src.read(buf, 0, 1024);
 						}
 					}
-					
-					if (filename.endsWith(".zip"))
-					{
-						unzip(src,location);
-						src.close();
-					}
-					else if (len > 0)
+					if (len > 0)
 					{
 						int total_filesize = 0;
 						OutputStream dst;
@@ -255,62 +243,6 @@ public class MinetestAssetCopy extends Activity
 		}
 		
 		
-		private void isDir(String dir, String unzipLocation) {
-			File f = new File(unzipLocation + dir);
-
-			if (!f.isDirectory()) {
-				f.mkdirs();
-			}
-		}
-		
-		private void unzip(InputStream f, String location)
-		{
-			 //int per = 0;
-			 //int size = getSummarySize(file);
-			//TODO: Progress Message
-			//TODO: Needs to check if file exists... 
-			 try {
-                    FileInputStream fin = new FileInputStream(f);
-                    ZipInputStream zin = new ZipInputStream(fin);
-                    ZipEntry ze;
-                    while ((ze = zin.getNextEntry()) != null) {
-                        if (ze.isDirectory()) {
-                            //per++;
-                            isDir(ze.getName(), location);
-                        } else {
-                            //per++;
-                            //int progress = 100 * per / size;
-                            // send update
-                            //publishProgress(progress);
-                            FileOutputStream f_out = new FileOutputStream(location + ze.getName());
-                            byte[] buffer = new byte[8192];
-                            int len;
-                            while ((len = zin.read(buffer)) != -1) {
-                                f_out.write(buffer, 0, len);
-                            }
-                            f_out.close();
-                            zin.closeEntry();
-                            f_out.close();
-                        }
-                    }
-                    zin.close();
-                } catch (FileNotFoundException e) {
-                    Log.e("MinetestAssetCopy", e.getMessage());
-                }
-		}
-		
-		private int getSummarySize(String[] zips) {
-			int size = 0;
-			for (String z : zips) {
-				try {
-					ZipFile zipSize = new ZipFile(z);
-					size += zipSize.size();
-				} catch (IOException e) {
-					Log.e(TAG, e.getLocalizedMessage());
-				}
-			}
-			return size;
-		}
 		/**
 		 * update progress bar
 		 */
