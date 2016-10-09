@@ -269,9 +269,8 @@ public class MinetestAssetCopy extends Activity
 			 //int size = getSummarySize(file);
 			//TODO: Progress Message
 			//TODO: Needs to check if file exists... 
-			 try {
-                    FileInputStream fin = new FileInputStream(f);
-                    ZipInputStream zin = new ZipInputStream(fin);
+			 try {                
+                    ZipInputStream zin = new ZipInputStream(f);
                     ZipEntry ze;
                     while ((ze = zin.getNextEntry()) != null) {
                         if (ze.isDirectory()) {
