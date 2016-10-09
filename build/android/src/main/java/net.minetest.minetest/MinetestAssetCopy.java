@@ -293,7 +293,7 @@ public class MinetestAssetCopy extends Activity
                         }
                     }
                     zin.close();
-                } catch (FileNotFoundException e) {
+                } catch (IOException e) {
                     Log.e("MinetestAssetCopy", e.getMessage());
                 }
 		}
