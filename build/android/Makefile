@@ -12,7 +12,7 @@ ANDR_ROOT = $(shell pwd)
 PROJ_ROOT = $(shell realpath $(ANDR_ROOT)/../..)
 APP_ROOT = $(ANDR_ROOT)/src/main
 
-GAMES_TO_COPY = minetest_game
+GAMES_TO_COPY = eidy
 MODS_TO_COPY =
 
 
@@ -168,7 +168,7 @@ release : local.properties
 reconfig: delconfig
 	@$(MAKE) local.properties
 
-delconfig:
+delconfig :
 	$(RM) local.properties
 
 local.properties:
@@ -221,8 +221,8 @@ $(OPENAL_LIB): $(OPENAL_TIMESTAMP)
 		NDK_MODULE_PATH=${NDK_MODULE_PATH} APP_ABI=${TARGET_ABI}               \
 		TARGET_ARCH_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}             \
 		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
-		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
 	touch ${OPENAL_TIMESTAMP};                                                 \
 	touch ${OPENAL_TIMESTAMP_INT};                                             \
 	else                                                                       \
@@ -265,10 +265,10 @@ $(OGG_LIB): $(OGG_TIMESTAMP)
 	cd ${OGG_DIR};                                                             \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-		APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                     \
-		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
-		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
+	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
 	touch ${OGG_TIMESTAMP};                                                    \
 	touch ${OGG_TIMESTAMP_INT};                                                \
 	else                                                                       \
@@ -312,8 +312,8 @@ $(OPENSSL_LIB): $(OPENSSL_TIMESTAMP) $(GMP_LIB)
 	ln -s ${OPENSSL_DIR} ../openssl;                                           \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-openssl;                          \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
-		--install-dir=$${TOOLCHAIN};                                           \
+	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
+	--install-dir=$${TOOLCHAIN};                                               \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	CC=${CROSS_PREFIX}gcc ./Configure enable-gmp -DL_ENDIAN -I${GMP_DIR} -L${GMP_DIR}/usr/lib android-${TARGET_ARCH};\
 	CC=${CROSS_PREFIX}gcc ANDROID_DEV=/tmp/ndk-${TARGET_HOST} make depend;     \
@@ -362,8 +362,8 @@ $(LEVELDB_LIB): $(LEVELDB_TIMESTAMP)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-leveldb;                          \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
-		--install-dir=$${TOOLCHAIN};                                           \
+	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
+	--install-dir=$${TOOLCHAIN};                                               \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -415,10 +415,10 @@ $(FREETYPE_LIB) : $(FREETYPE_TIMESTAMP)
 	cd ${FREETYPE_DIR}/Android/jni;                                            \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-		APP_PLATFORM=${APP_PLATFORM} APP_ABI=${TARGET_ABI}                     \
-		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
-		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
+	APP_PLATFORM=${APP_PLATFORM} APP_ABI=${TARGET_ABI}                         \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
 	touch ${FREETYPE_TIMESTAMP};                                               \
 	touch ${FREETYPE_TIMESTAMP_INT};                                           \
 	else                                                                       \
@@ -468,8 +468,8 @@ $(ICONV_LIB) : $(ICONV_TIMESTAMP)
 	\
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-iconv;                            \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
-		--install-dir=$${TOOLCHAIN};                                           \
+	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
+	--install-dir=$${TOOLCHAIN};                                               \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -530,10 +530,10 @@ $(IRRLICHT_LIB): $(IRRLICHT_TIMESTAMP) $(FREETYPE_LIB)
 	cd deps/irrlicht/source/Irrlicht/Android;                                  \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-		APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                     \
-		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
-		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
+	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
 	touch ${IRRLICHT_TIMESTAMP};                                               \
 	touch ${IRRLICHT_TIMESTAMP_INT};                                           \
 	else                                                                       \
@@ -580,8 +580,8 @@ $(CURL_LIB): $(CURL_TIMESTAMP) $(OPENSSL_LIB)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-curl;                             \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
-		--install-dir=$${TOOLCHAIN};                                           \
+	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
+	--install-dir=$${TOOLCHAIN};                                               \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -639,8 +639,8 @@ $(GMP_LIB): $(GMP_TIMESTAMP)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-gmp;                              \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
-		--install-dir=$${TOOLCHAIN};                                           \
+	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
+	--install-dir=$${TOOLCHAIN};                                               \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -711,27 +711,31 @@ assets : $(ASSETS_TIMESTAMP)
 	if [ $$REFRESH -ne 0 ] ; then                                              \
 	echo "assets changed, refreshing...";                                      \
 	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${APP_ROOT}/assets/Minetest;                                      \
-	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/Minetest;         \
-	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/Minetest;                    \
-	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/Minetest;                    \
-	mkdir -p ${APP_ROOT}/assets/Minetest/client;                                  \
-	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/Minetest/client;      \
-	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/Minetest/LICENSE.txt;  \
-	mkdir -p ${APP_ROOT}/assets/Minetest/fonts;                                   \
-	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/Minetest/fonts/;         \
-	mkdir -p ${APP_ROOT}/assets/Minetest/games;                                   \
+	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
+	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
+	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
+	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
+	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
+	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
+	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/eidy/client;      \
+	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/eidy/LICENSE.txt;  \
+	mkdir -p ${APP_ROOT}/assets/eidy/fonts;                                   \
+	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/eidy/fonts/;         \
+	mkdir -p ${APP_ROOT}/assets/eidy/games;                                   \
 	for game in ${GAMES_TO_COPY}; do                                           \
-	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/Minetest/games/;    \
-	done;                                                                      \
-	mkdir -p ${APP_ROOT}/assets/Minetest/mods;                                    \
+	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
+	done; 									   \
+	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
+	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
 	for mod in ${MODS_TO_COPY}; do                                             \
-	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/Minetest/mods/;       \
+	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/Minetest;                         \
-	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/Minetest;                   \
-	mkdir -p ${APP_ROOT}/assets/Minetest/media;                                \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/Minetest/media;     \
+	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/eidy;                         \
+	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
+	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
+	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
+	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
+	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/eidy/media;     \
 	cd ${APP_ROOT}/assets ||  exit 1;                                          \
 	find . -name "timestamp" -exec rm {} \; ;                                  \
 	find . -name "*.blend" -exec rm {} \; ;                                    \
@@ -740,7 +744,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L Minetest > filelist.txt;                                             \
+	find -L eidy > filelist.txt;                                             \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
@@ -753,11 +757,11 @@ apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB)
 	$(OPENAL_LIB) $(OGG_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h sqlite3_download
 	+ @${ANDROID_NDK}/ndk-build NDK_MODULE_PATH=${NDK_MODULE_PATH}             \
-		GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}      \
-		APP_PLATFORM=${APP_PLATFORM}                                           \
-		TARGET_LIBDIR=${TARGET_LIBDIR}                                         \
-		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
+	GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}          \
+	APP_PLATFORM=${APP_PLATFORM}                                               \
+	TARGET_LIBDIR=${TARGET_LIBDIR}                                             \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
 		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	if [ ! -e ${APP_ROOT}/jniLibs ]; then                                      \
 		ln -s ${ANDR_ROOT}/libs ${APP_ROOT}/jniLibs || exit 1;                 \
@@ -765,16 +769,16 @@ apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB)
 	export VERSION_STR="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" && \
 	export BUILD_TYPE_C=$$(echo "$${BUILD_TYPE}" | sed 's/./\U&/') &&          \
 	gradle assemble$$BUILD_TYPE_C &&                                           \
-	echo "APK stored at: build/outputs/apk/Minetest-$$BUILD_TYPE.apk" &&       \
+	echo "APK stored at: build/outputs/apk/eidy-$$BUILD_TYPE.apk" &&       \
 	echo "You can install it with \`make install_$$BUILD_TYPE\`"
 
 # These Intentionally doesn't depend on their respective build steps,
 # because it takes a while to verify that everything's up-to-date.
-install_debug:
-	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/Minetest-debug.apk
+install_debug :
+	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/eidy-debug.apk
 
 install_release:
-	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/Minetest-release.apk
+	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/eidy-release.apk
 
 prep_srcdir :
 	@if [ ! -e ${ANDR_ROOT}/jni/src ]; then                                    \
@@ -819,8 +823,8 @@ $(ANDR_ROOT)/jni/src/android_version.h : prep_srcdir
 	echo "#define VERSION_MAJOR ${VERSION_MAJOR}";                             \
 	echo "#define VERSION_MINOR ${VERSION_MINOR}";                             \
 	echo "#define VERSION_PATCH ${VERSION_PATCH}";                             \
-	echo "#define VERSION_STRING STR(VERSION_MAJOR) \".\" STR(VERSION_MINOR) \
-	\".\" STR(VERSION_PATCH)";                                                 \
+	echo "#define VERSION_STRING STR(VERSION_MAJOR)\".\"STR(VERSION_MINOR)\
+	\".\"STR(VERSION_PATCH)";                                                  \
 	echo "#endif";                                                             \
 	} > $${VERSION_FILE_NEW};                                                  \
 	if ! cmp -s $${VERSION_FILE} $${VERSION_FILE_NEW}; then                    \

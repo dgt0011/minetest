@@ -103,6 +103,7 @@ std::wstring utf8_to_wide(const std::string &input)
 }
 
 #ifdef __ANDROID__
+
 // TODO: this is an ugly fix for wide_to_utf8 somehow not working on android
 std::string wide_to_utf8(const std::wstring &input)
 {
@@ -134,7 +135,6 @@ std::string wide_to_utf8(const std::wstring &input)
 
 	return out;
 }
-
 #endif
 #else // _WIN32
 

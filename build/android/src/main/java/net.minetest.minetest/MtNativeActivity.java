@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
+import android.net.Uri;
 
 public class MtNativeActivity extends NativeActivity {
 	@Override
@@ -39,6 +40,11 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessageReturnValue = "";
 		m_MessagReturnCode   = -1;
 	}
+	
+	public void showBrowser(String url) {
+		Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
+        startActivity(intent);
+	}	
 
 	public static native void putMessageBoxResult(String text);
 

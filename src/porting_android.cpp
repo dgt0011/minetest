@@ -242,6 +242,20 @@ void showInputDialog(const std::string& acceptButton, const  std::string& hint,
 			jacceptButton, jhint, jcurrent, jeditType);
 }
 
+void showBrowser(const std::string& url)
+{
+	jmethodID showbrowserMethod = jnienv->GetMethodID(nativeActivity,"showBrowser",
+		"(Ljava/lang/String;)V");
+
+	if (NULL == showbrowserMethod) {
+		assert("porting::showBrowser unable to find java show browser method" == 0);
+	} 
+
+	jstring jUrl = jnienv->NewStringUTF(url.c_str());
+	
+	jnienv->CallVoidMethod(app_global->activity->clazz, showbrowserMethod, jUrl);
+}
+
 int getInputDialogState()
 {
 	jmethodID dialogstate = jnienv->GetMethodID(nativeActivity,

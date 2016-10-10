@@ -64,6 +64,13 @@ void copyAssets();
 void showInputDialog(const std::string& acceptButton,
 		const  std::string& hint, const std::string& current, int editType);
 
+
+/**
+ * Open the devices default browser with a specified URL
+ * @param url The URL Address to open the platforms native browser and navigate to
+ */
+void showBrowser(const std::string& url);
+
 /**
  * WORKAROUND for not working callbacks from java -> c++
  * get current state of input dialog

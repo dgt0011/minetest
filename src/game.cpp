@@ -3555,10 +3555,16 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 		} else if (event.type == CE_BROWSER_SHOW) {
 			u32 id = event.browser_show.id;
 
+#ifndef ANDROID
 			std::string command;
 			command = "start " + *event.browser_show.address;
-
 			system(command.c_str());
+#endif
+
+#ifdef ANDROID
+			porting::showBrowser(*event.browser_show.address);
+#endif
+
 		}
 	}
 }

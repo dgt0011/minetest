@@ -14,7 +14,7 @@
 	#include "cmake_config.h"
 #elif defined (__ANDROID__) || defined (ANDROID)
 	#define PROJECT_NAME "eidy"
-	#define PROJECT_NAME_C "Eidy"
+	#define PROJECT_NAME_C "eidy"
 	#define STATIC_SHAREDIR ""
 	#include "android_version.h"
 	#ifdef NDEBUG
