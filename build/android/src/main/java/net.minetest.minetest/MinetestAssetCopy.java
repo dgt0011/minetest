@@ -44,7 +44,8 @@ public class MinetestAssetCopy extends Activity
 		m_ProgressBar.getLayoutParams().width = (int) (display.getWidth() * 0.8);
 		m_ProgressBar.invalidate();
 		m_CacheDir = getApplicationContext().getCacheDir().getAbsolutePath();
-		
+		Log.i("MinetestAssetCopy","CacheDir = " + m_CacheDir);
+		 
 		/* check if there's already a copy in progress and reuse in case it is*/
 		MinetestAssetCopy prevActivity = 
 				(MinetestAssetCopy) getLastNonConfigurationInstance();
