@@ -98,9 +98,9 @@ public class MinetestAssetCopy extends Activity
 			String flashDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
-			String cacheDir = this.getCacheDir() + "/media/";
-			 
+			String cacheDir = this.getCacheDir() + "/media/";			 
 			String baseDir = flashDir;
+			
 			// prepare temp folder
 			File TempFolder = new File(baseDir + "eidy/tmp/");
 			
@@ -145,7 +145,7 @@ public class MinetestAssetCopy extends Activity
 				{
 					String filename = m_tocopy.get(i);
 					
-					if(filename.contains("/cache/")
+					if(filename.contains("/cache/"))
 					{
 						Path p = Paths.get(filename);
 						filename = p.getFileName().toString();
@@ -295,7 +295,7 @@ public class MinetestAssetCopy extends Activity
 				String current_path = (String) itr.next();
 				String FlashPath = FlashBaseDir + "/" + current_path;
 				
-				if(current_path.contains("/cache/")
+				if(current_path.contains("/cache/"))
 				{
 					Path p = Paths.get(current_path);
 					String file = p.getFileName().toString();
