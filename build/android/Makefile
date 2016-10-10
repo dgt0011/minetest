@@ -732,6 +732,7 @@ assets : $(ASSETS_TIMESTAMP)
 	done;                                                                      \
 	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/eidy;                         \
 	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
+	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
 	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
 	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
