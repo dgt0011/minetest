@@ -27,6 +27,9 @@ import android.text.TextPaint;
 
 public class MinetestAssetCopy extends Activity
 {
+	
+	String CacheDir;  
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState)
 	{
@@ -40,6 +43,7 @@ public class MinetestAssetCopy extends Activity
 		Display display = getWindowManager().getDefaultDisplay();
 		m_ProgressBar.getLayoutParams().width = (int) (display.getWidth() * 0.8);
 		m_ProgressBar.invalidate();
+		m_CacheDir = getApplicationContext().getCacheDir().getAbsolutePath()
 		
 		/* check if there's already a copy in progress and reuse in case it is*/
 		MinetestAssetCopy prevActivity = 
@@ -87,7 +91,19 @@ public class MinetestAssetCopy extends Activity
 			}
 			return size;
 		}
-
+		// Get filename from the path
+		private string GetFilename(String str)
+		{
+			if (null != str && str.length() > 0 )
+			{
+				int endIndex = str.lastIndexOf("/");
+				if (endIndex != -1)  
+				{
+					String newstr = str.substring(endIndex+1); 
+					return newstr;
+				}
+			}  
+		}
 		@Override
 		protected String doInBackground(String... files)
 		{
@@ -98,7 +114,7 @@ public class MinetestAssetCopy extends Activity
 			String flashDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
-			String cacheDir = this.getCacheDir() + "/media/";			 
+			String cacheDir = m_CacheDir + "/media/";			 
 			String baseDir = flashDir;
 			
 			// prepare temp folder
@@ -146,10 +162,8 @@ public class MinetestAssetCopy extends Activity
 					String filename = m_tocopy.get(i);
 					
 					if(filename.contains("/cache/"))
-					{
-						Path p = Paths.get(filename);
-						filename = p.getFileName().toString();
-						baseDir = cacheDir; 
+					{					 
+						baseDir = cacheDir + GetFilename(filename);	 
 					}
 					else
 					{
@@ -287,7 +301,7 @@ public class MinetestAssetCopy extends Activity
 		{
 			String FlashBaseDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath();
-			String CacheBaseDir = this.getCacheDir() + "/media/";
+			String CacheBaseDir = m_CacheDir + "/media/";
 			Iterator itr = m_filenames.iterator();
 			
 			while (itr.hasNext())
@@ -296,10 +310,8 @@ public class MinetestAssetCopy extends Activity
 				String FlashPath = FlashBaseDir + "/" + current_path;
 				
 				if(current_path.contains("/cache/"))
-				{
-					Path p = Paths.get(current_path);
-					String file = p.getFileName().toString();
-					FlashPath = CacheBaseDir + file;
+				{			 
+					FlashPath = CacheBaseDir + GetFilename(current_path);
 				}
 				
 				if (isAssetFolder(current_path))
