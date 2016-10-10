@@ -114,7 +114,7 @@ public class MinetestAssetCopy extends Activity
 			String flashDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
-			String cacheDir = m_CacheDir + "/media/";			 
+			String cacheDir = this.getCacheDir().getAbsolutePath() + "/media/";			 
 			String baseDir = flashDir;
 			
 			// prepare temp folder
