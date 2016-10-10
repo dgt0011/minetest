@@ -95,11 +95,12 @@ public class MinetestAssetCopy extends Activity
 			m_filenames    = new Vector<String>();
 			m_tocopy       = new Vector<String>();
 			m_asset_size_unknown = new Vector<String>();
-			String baseDir = 
+			String flashDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
+			String cacheDir = this.getCacheDir() + "/media/";
 			 
-			
+			String baseDir = "";
 			// prepare temp folder
 			File TempFolder = new File(baseDir + "eidy/tmp/");
 			
@@ -143,6 +144,20 @@ public class MinetestAssetCopy extends Activity
 				try
 				{
 					String filename = m_tocopy.get(i);
+					
+					if(filename.contains("/cache/")
+					{
+						Path p = Paths.get(filename);
+						filename = p.getFileName().toString();
+						baseDir = cacheDir; 
+					}
+					else
+					{
+						baseDir = flashDir;
+					}
+					
+					
+					
 					publishProgress(i);
 					
 					boolean asset_size_unknown = false;
@@ -272,13 +287,20 @@ public class MinetestAssetCopy extends Activity
 		{
 			String FlashBaseDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath();
-			
+			String CacheBaseDir = this.getCacheDir() + "/media/";
 			Iterator itr = m_filenames.iterator();
 			
 			while (itr.hasNext())
 			{
 				String current_path = (String) itr.next();
 				String FlashPath = FlashBaseDir + "/" + current_path;
+				
+				if(current_path.contains("/cache/")
+				{
+					Path p = Paths.get(current_path);
+					String file = p.getFileName().toString();
+					FlashPath = CacheBaseDir + file;
+				}
 				
 				if (isAssetFolder(current_path))
 				{
