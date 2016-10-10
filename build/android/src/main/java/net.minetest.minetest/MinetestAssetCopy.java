@@ -28,7 +28,7 @@ import android.text.TextPaint;
 public class MinetestAssetCopy extends Activity
 {
 	
-	String CacheDir;  
+	String m_CacheDir;  
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -92,7 +92,7 @@ public class MinetestAssetCopy extends Activity
 			return size;
 		}
 		// Get filename from the path
-		private string GetFilename(String str)
+		private String GetFilename(String str)
 		{
 			if (null != str && str.length() > 0 )
 			{
@@ -103,6 +103,7 @@ public class MinetestAssetCopy extends Activity
 					return newstr;
 				}
 			}  
+			return str;
 		}
 		@Override
 		protected String doInBackground(String... files)
