@@ -43,7 +43,7 @@ public class MinetestAssetCopy extends Activity
 		Display display = getWindowManager().getDefaultDisplay();
 		m_ProgressBar.getLayoutParams().width = (int) (display.getWidth() * 0.8);
 		m_ProgressBar.invalidate();
-		m_CacheDir = getApplicationContext().getCacheDir().getAbsolutePath()
+		m_CacheDir = getApplicationContext().getCacheDir().getAbsolutePath();
 		
 		/* check if there's already a copy in progress and reuse in case it is*/
 		MinetestAssetCopy prevActivity = 
