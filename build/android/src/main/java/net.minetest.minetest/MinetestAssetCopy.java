@@ -100,7 +100,7 @@ public class MinetestAssetCopy extends Activity
 					+ "/";
 			String cacheDir = this.getCacheDir() + "/media/";
 			 
-			String baseDir = "";
+			String baseDir = flashDir;
 			// prepare temp folder
 			File TempFolder = new File(baseDir + "eidy/tmp/");
 			
