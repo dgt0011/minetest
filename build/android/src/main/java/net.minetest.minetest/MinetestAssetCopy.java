@@ -113,11 +113,11 @@ public class MinetestAssetCopy extends Activity
 			m_filenames    = new Vector<String>();
 			m_tocopy       = new Vector<String>();
 			m_asset_size_unknown = new Vector<String>();
-			String flashDir = 
+			String baseDir = 
 					Environment.getExternalStorageDirectory().getAbsolutePath()
 					+ "/";
 			String cacheDir = m_CacheDir + "/media/";			 
-			String baseDir = flashDir;
+		 
 			
 			// prepare temp folder
 			File TempFolder = new File(baseDir + "eidy/tmp/");
@@ -163,17 +163,7 @@ public class MinetestAssetCopy extends Activity
 				{
 					String filename = m_tocopy.get(i);
 					
-					if(filename.contains("/cache/"))
-					{					 
-						baseDir = cacheDir + GetFilename(filename);	 
-					}
-					else
-					{
-						baseDir = flashDir;
-					}
-					
-					
-					
+				  
 					publishProgress(i);
 					
 					boolean asset_size_unknown = false;
@@ -233,8 +223,15 @@ public class MinetestAssetCopy extends Activity
 						int total_filesize = 0;
 						OutputStream dst;
 						try
-						{
-							dst = new FileOutputStream(baseDir + "/" + filename);
+						{						
+							if(filename.contains("/cache/"))
+							{					 
+								dst = new FileOutputStream(cacheDir + "/" + GetFilename(filename)); 
+							}
+							else
+							{
+								dst = new FileOutputStream(baseDir + "/" + filename);
+							}
 						} catch (IOException e) {
 							Log.e("MinetestAssetCopy","Copying file: " + baseDir +
 							"/" + filename + " FAILED (couldn't open output file)");
