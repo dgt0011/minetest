@@ -150,6 +150,9 @@ public class MinetestAssetCopy extends Activity
 			BuildFolderList();
 			BuildFileList();
 			
+			// Clean up folders from previous version
+			RemoveUnusedFolders();
+			
 			// scan filelist
 			ProcessFileList();
 			
@@ -291,6 +294,47 @@ public class MinetestAssetCopy extends Activity
 				String full_text = "scanning " + todisplay + " ...";
 				m_Filename.setText(full_text);
 			}
+		}
+		
+		private void RemoveUnusedFolders()
+		{
+			// Go through folder list and remove any that aren't in the current asset
+			// folder				
+			String FlashBaseDir = 
+					Environment.getExternalStorageDirectory().getAbsolutePath();
+			int basedirlen = FlashBaseDir.length() + 1;			
+			
+			// Hardcoded to mods folder for now
+			File mods_folder = new File(FlashBaseDir + "/eidy/games/eidy/mods");	
+			 
+			// Get entries under this folder		
+			File[] files = mods_folder.listFiles();
+			if (files.length > 0) 
+			{
+					Log.i("MinetestAssetCopy","\t Previously existing files detected!");
+			}
+			
+			// Go throw each, item seeing if it's a folder
+			for (File inFile : files) {
+				if (inFile.isDirectory()) {
+					// See if this folder exists in foldernames 
+					String strippedPath = inFile.getAbsolutePath().substring(basedirlen);
+			
+					if(!m_foldernames.contains(strippedPath))
+					{
+						// If it's not in the index, delete it
+						Log.i("MinetestAssetCopy","\t removed old folder: " +
+									inFile.getAbsolutePath());
+						inFile.delete();
+					}
+					else
+					{
+						Log.v("MinetestAssetCopy","\t not deleted: " +
+									inFile.getAbsolutePath());
+					}  
+				} 
+			}  
+	  
 		}
 		
 		/**
