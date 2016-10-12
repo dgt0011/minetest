@@ -309,11 +309,14 @@ public class MinetestAssetCopy extends Activity
 			 
 			// Get entries under this folder		
 			File[] files = mods_folder.listFiles();
-			if (files.length > 0) 
+			if (files != null && files.length > 0) 
 			{
-					Log.i("MinetestAssetCopy","\t Previously existing files detected!");
+				Log.i("MinetestAssetCopy","\t Previously existing files detected!");
 			}
-			
+			else
+			{
+				return;
+			}
 			// Go throw each, item seeing if it's a folder
 			for (File inFile : files) {
 				if (inFile.isDirectory()) {
