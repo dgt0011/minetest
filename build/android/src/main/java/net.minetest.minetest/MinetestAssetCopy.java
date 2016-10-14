@@ -148,10 +148,13 @@ public class MinetestAssetCopy extends Activity
 			
 			// build lists from prepared data
 			BuildFolderList();
+			
+			// Clean up folders  
+			RemoveUnusedFolders();
+			
 			BuildFileList();
 			
-			// Clean up folders from previous version
-			RemoveUnusedFolders();
+		
 			
 			// scan filelist
 			ProcessFileList();
@@ -295,7 +298,13 @@ public class MinetestAssetCopy extends Activity
 				m_Filename.setText(full_text);
 			}
 		}
-		
+		void deleteRecursive(File fileOrDirectory) {
+			if (fileOrDirectory.isDirectory())
+				for (File child : fileOrDirectory.listFiles())
+					deleteRecursive(child);
+
+			fileOrDirectory.delete();
+		}
 		private void RemoveUnusedFolders()
 		{
 			// Go through folder list and remove any that aren't in the current asset
@@ -319,7 +328,7 @@ public class MinetestAssetCopy extends Activity
 				return;
 			}
 			
-			// Go throw each, item seeing if it's a folder 
+			// Go through each mod, item seeing if it's a folder 
 			for (File inFile : files) {
 				if (inFile.isDirectory()) {
 					// See if this folder exists in foldernames 
@@ -330,7 +339,7 @@ public class MinetestAssetCopy extends Activity
 						// If it's not in the index, delete it
 						Log.i("MinetestAssetCopy","\t removed old folder: " +
 									inFile.getAbsolutePath());
-						inFile.delete();
+						deleteRecursive(infile);
 					}
 					else
 					{
