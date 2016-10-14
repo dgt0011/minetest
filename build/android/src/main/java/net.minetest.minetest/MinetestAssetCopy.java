@@ -315,9 +315,11 @@ public class MinetestAssetCopy extends Activity
 			}
 			else
 			{
+				Log.i("MinetestAssetCopy","\t Previously existing files not detected - Must be a new install.");
 				return;
 			}
-			// Go throw each, item seeing if it's a folder
+			
+			// Go throw each, item seeing if it's a folder 
 			for (File inFile : files) {
 				if (inFile.isDirectory()) {
 					// See if this folder exists in foldernames 
