@@ -45,8 +45,7 @@ const char** touchgui_button_imagenames = (const char*[]) {
 	"left_arrow.png",
 	"right_arrow.png",
 	"jump_btn.png",
-	"down.png",
-	"home.png"
+	"down.png"
 };
 
 static irr::EKEY_CODE id2keycode(touch_gui_button_id id)
@@ -532,17 +531,24 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 					m_screensize.Y),
 			L"H",false);
 	
-	if (g_settings->getBool("show_settingsbar"))
-	{
-		m_settingsbar.init(m_texturesource, "gear_icon.png", settings_starter_id,
-			v2s32(m_screensize.X - (button_size / 2),
-			m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
-			+ (button_size * 0.5)),
-			v2s32(m_screensize.X,
-			m_screensize.Y - (SETTINGS_BAR_Y_OFFSET * button_size)
-			+ (button_size * 0.5)), AHBB_Dir_Right_Left,
-			3.0);
+ 
+	m_settingsbar.init(m_texturesource, "me.png", settings_starter_id,
+		v2s32(m_screensize.X - (button_size / 2),
+		m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
+		+ (button_size * 0.5)),
+		v2s32(m_screensize.X,
+		m_screensize.Y - (SETTINGS_BAR_Y_OFFSET * button_size)
+		+ (button_size * 0.5)), AHBB_Dir_Right_Left,
+		3.0);
 
+	if (g_settings->getBool("show_homebutton"))
+	{
+		m_settingsbar.addButton(home_id, L"home", "home.png");
+		m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
+		m_settingsbar.addButton(fast_id, L"fast", "fast_btn.png");
+	}
+	else
+	{
 		m_settingsbar.addButton(fly_id, L"fly", "fly_btn.png");
 		m_settingsbar.addButton(noclip_id, L"noclip", "noclip_btn.png");
 		m_settingsbar.addButton(fast_id, L"fast", "fast_btn.png");
@@ -550,29 +556,8 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 		m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
 		m_settingsbar.addButton(range_id, L"rangeview", "rangeview_btn.png");
 	}
-	else
-	{
-		m_settingsbar.init(m_texturesource, "gear_icon.png", settings_starter_id,
-			v2s32(m_screensize.X - 1,
-			m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
-			+ (button_size * 0.5)),
-			v2s32(m_screensize.X,
-			m_screensize.Y - (SETTINGS_BAR_Y_OFFSET * button_size)
-			+ (button_size * 0.5)), AHBB_Dir_Right_Left,
-			3.0);
-	}
-
-	if (g_settings->getBool("show_homebutton"))
-	{
 	 
-		/* init jump button */
-		initButton(home_id,
-			rect<s32>(m_screensize.X - (1.75*button_size),
-			0(0.5*button_size),
-			m_screensize.X - (0.25*button_size),
-			0),
-			L"H", false);
-	}
+  
 
 	m_rarecontrolsbar.init(m_texturesource, "rare_controls.png",
 			rare_controls_starter_id,
