@@ -1355,6 +1355,7 @@ void KeyCache::populate()
 	key[KeyType::SCREENSHOT]   = getKeySetting("keymap_screenshot");
 	key[KeyType::TOGGLE_HUD]   = getKeySetting("keymap_toggle_hud");
 	key[KeyType::TOGGLE_CHAT]  = getKeySetting("keymap_toggle_chat");
+	key[KeyType::HOME] = getKeySetting("keymap_home");
 	key[KeyType::TOGGLE_FORCE_FOG_OFF]
 			= getKeySetting("keymap_toggle_force_fog_off");
 	key[KeyType::TOGGLE_UPDATE_CAMERA]
@@ -2789,6 +2790,8 @@ void Game::processKeyInput(VolatileRunFlags *flags,
 		toggleCinematic(statustext_time);
 	} else if (wasKeyDown(KeyType::SCREENSHOT)) {
 		client->makeScreenshot(device);
+	}else if (wasKeyDown(KeyType::HOME)) {
+		client->sendChatMessage(L"/home");
 	} else if (wasKeyDown(KeyType::TOGGLE_HUD)) {
 		toggleHud(statustext_time, &flags->show_hud);
 	} else if (wasKeyDown(KeyType::MINIMAP)) {

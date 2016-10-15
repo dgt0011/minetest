@@ -40,6 +40,7 @@ typedef enum {
 	right_id,
 	jump_id,
 	crunch_id,
+	home_id,
 	after_last_element_id,
 	settings_starter_id,
 	rare_controls_starter_id,
