@@ -532,8 +532,8 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 					m_screensize.Y),
 			L"H",false);
 	
-	if (g_settings->getBool("show_settingsbar"))
-	{
+	//if (g_settings->getBool("show_settingsbar"))
+	//{
 		m_settingsbar.init(m_texturesource, "gear_icon.png", settings_starter_id,
 			v2s32(m_screensize.X - (button_size / 2),
 			m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
@@ -549,7 +549,7 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 		m_settingsbar.addButton(debug_id, L"debug", "debug_btn.png");
 		m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
 		m_settingsbar.addButton(range_id, L"rangeview", "rangeview_btn.png");
-	}
+	//}
 
 	if (g_settings->getBool("show_homebutton"))
 	{
