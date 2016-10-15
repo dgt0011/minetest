@@ -532,7 +532,7 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 					m_screensize.Y),
 			L"H",false);
 	
-	if (g_settings->getBool("hide_settingsbar"))
+	if (g_settings->getBool("show_settingsbar"))
 	{
 		m_settingsbar.init(m_texturesource, "gear_icon.png", settings_starter_id,
 			v2s32(m_screensize.X - (button_size / 2),

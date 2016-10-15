@@ -91,6 +91,8 @@ void set_default_settings(Settings *settings)
 	#else
 	settings->setDefault("show_debug", "true");
 	#endif
+	settings->setDefault("show_settingsbar", "false");
+	settings->setDefault("show_homebutton", "true");
 
 	settings->setDefault("fps_max", "60");
 	settings->setDefault("pause_fps_max", "20");
