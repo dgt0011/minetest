@@ -339,7 +339,7 @@ public class MinetestAssetCopy extends Activity
 						// If it's not in the index, delete it
 						Log.i("MinetestAssetCopy","\t removed old folder: " +
 									inFile.getAbsolutePath());
-						deleteRecursive(infile);
+						deleteRecursive(inFile);
 					}
 					else
 					{
