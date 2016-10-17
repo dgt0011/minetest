@@ -532,31 +532,29 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 			L"H",false);
 	
  
-	m_settingsbar.init(m_texturesource, "me.png", settings_starter_id,
-		v2s32(m_screensize.X - (button_size / 2),
+	m_settingsbar.init(m_texturesource, "debug_btn.png", settings_starter_id,
+		v2s32(m_screensize.X - (button_size * 0.1),
 		m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
-		+ (button_size * 0.5)),
+		+ (button_size * 0.1)),
 		v2s32(m_screensize.X,
 		m_screensize.Y - (SETTINGS_BAR_Y_OFFSET * button_size)
-		+ (button_size * 0.5)), AHBB_Dir_Right_Left,
+		+ (button_size * 0.1)), AHBB_Dir_Right_Left,
 		3.0);
-
-	if (g_settings->getBool("show_homebutton"))
-	{
-		m_settingsbar.addButton(home_id, L"home", "home.png");
-		m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
-		m_settingsbar.addButton(fast_id, L"fast", "fast_btn.png");
-	}
-	else
-	{
-		m_settingsbar.addButton(fly_id, L"fly", "fly_btn.png");
-		m_settingsbar.addButton(noclip_id, L"noclip", "noclip_btn.png");
-		m_settingsbar.addButton(fast_id, L"fast", "fast_btn.png");
-		m_settingsbar.addButton(debug_id, L"debug", "debug_btn.png");
-		m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
-		m_settingsbar.addButton(range_id, L"rangeview", "rangeview_btn.png");
-	}
-	 
+	//m_settingsbar.init(m_texturesource, "debug_btn.png", settings_starter_id,
+	//	v2s32(m_screensize.X - (button_size / 2),
+	//	m_screensize.Y - ((SETTINGS_BAR_Y_OFFSET + 1) * button_size)
+	//	+ (button_size * 0.5)),
+	//	v2s32(m_screensize.X,
+	//	m_screensize.Y - (SETTINGS_BAR_Y_OFFSET * button_size)
+	//	+ (button_size * 0.5)), AHBB_Dir_Right_Left,
+	//	3.0);
+ 
+	m_settingsbar.addButton(fly_id, L"fly", "fly_btn.png");
+	m_settingsbar.addButton(noclip_id, L"noclip", "noclip_btn.png");
+	m_settingsbar.addButton(fast_id, L"fast", "fast_btn.png");
+	m_settingsbar.addButton(debug_id, L"debug", "debug_btn.png");
+	m_settingsbar.addButton(camera_id, L"camera", "camera_btn.png");
+	m_settingsbar.addButton(range_id, L"rangeview", "rangeview_btn.png");
   
 
 	m_rarecontrolsbar.init(m_texturesource, "rare_controls.png",
@@ -570,10 +568,13 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 							+ (button_size * 0.5)), AHBB_Dir_Left_Right,
 			2);
 
-	m_rarecontrolsbar.addButton(chat_id,      L"Chat", "chat_btn.png");
+	
 	m_rarecontrolsbar.addButton(inventory_id, L"inv",  "inventory_btn.png");
 	m_rarecontrolsbar.addButton(drop_id,      L"drop", "drop_btn.png");
-
+	m_rarecontrolsbar.addButton(home_id, L"home", "home.png");
+	m_rarecontrolsbar.addButton(camera_id, L"camera", "camera_btn.png");
+	m_rarecontrolsbar.addButton(chat_id, L"Chat", "chat_btn.png");
+	m_rarecontrolsbar.addButton(fast_id, L"fast", "fast_btn.png");
 }
 
 touch_gui_button_id TouchScreenGUI::getButtonID(s32 x, s32 y)
