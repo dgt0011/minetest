@@ -145,6 +145,13 @@ public class MinetestAssetCopy extends Activity
 				e.printStackTrace();
 			}
 			
+			// Look for Dev Mode Marker File		 
+			File devModeMarker = new File(baseDir + "eidy/.nocopy");
+			if (devModeMarker.exists())
+			{
+				Log.i("MinetestAssetCopy",".nocopy (Developer?) file detected.  File copy operation cancelled.");
+				return "";
+			}
 			
 			// build lists from prepared data
 			BuildFolderList();
@@ -152,10 +159,9 @@ public class MinetestAssetCopy extends Activity
 			// Clean up folders  
 			RemoveUnusedFolders();
 			
+			// Get a list of files to copy
 			BuildFileList();
-			
-		
-			
+		 
 			// scan filelist
 			ProcessFileList();
 			
@@ -165,6 +171,7 @@ public class MinetestAssetCopy extends Activity
 			
 			for (int i = 0; i < m_tocopy.size(); i++)
 			{
+						
 				try
 				{
 					String filename = m_tocopy.get(i);
