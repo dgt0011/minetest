@@ -36,20 +36,7 @@ public class MtNativeActivity extends NativeActivity {
             makeFullScreen();
         }
     }
-
-	@Override
-    public void onBackPressed() {
-    }
-
-	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-     if (keyCode == KeyEvent.KEYCODE_BACK) {
-     //preventing default implementation previous to android.os.Build.VERSION_CODES.ECLAIR
-     return true;
-     }
-     return super.onKeyDown(keyCode, event);    
-	}
-
+ 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
