@@ -1217,6 +1217,7 @@ static void show_pause_menu(GUIFormSpecMenu **cur_formspec,
 #endif
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_menu;"
 			<< strgettext("Exit to Menu") << "]";
+#ifndef __ANDROID__
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_os;"
 			<< strgettext("Exit to OS")   << "]"
 			<< "textarea[7.5,0.25;3.9,6.25;;" << control_text << ";]"
@@ -1224,7 +1225,7 @@ static void show_pause_menu(GUIFormSpecMenu **cur_formspec,
 			<< g_build_info << "\n"
 			<< "path_user = " << wrap_rows(porting::path_user, 20)
 			<< "\n;]";
-
+#endif
 	/* Create menu */
 	/* Note: FormspecFormSource and LocalFormspecHandler  *
 	 * are deleted by guiFormSpecMenu                     */
@@ -2765,12 +2766,12 @@ void Game::processKeyInput(VolatileRunFlags *flags,
 		toggleAutorun(statustext_time);
 	} else if (wasKeyDown(KeyType::INVENTORY)) {
 		openInventory();
-	} else if (wasKeyDown(KeyType::ESC) || input->wasKeyDown(CancelKey)) {
+	} else if (wasKeyDown(KeyType::ESC) || input->wasKeyDown(CancelKey)) { 
 		if (!gui_chat_console->isOpenInhibited()) {
 			show_pause_menu(&current_formspec, client, gamedef,
 				texture_src, device, &input->joystick,
 				simple_singleplayer_mode);
-		}
+		} 
 	} else if (wasKeyDown(KeyType::CHAT)) {
 		openConsole(0.2, L"");
 	} else if (wasKeyDown(KeyType::CMD)) {
