@@ -34,16 +34,23 @@ using namespace irr::core;
 using namespace irr::gui;
 
 typedef enum {
-	forward_id = 0,
-	backward_id,
+
+	forward_one = 0,
+	forward_two,
+	forward_three,
+	backward_one,
+	backward_two,
+	backward_three,
 	left_id,
 	right_id,
-	jump_id,
+	empty_id,
+
+	jump_id,	
 	crunch_id,
-	home_id,
-	after_last_element_id,
+	 
 	settings_starter_id,
 	rare_controls_starter_id,
+	home_id,
 	fly_id,
 	noclip_id,
 	fast_id,
@@ -52,7 +59,9 @@ typedef enum {
 	range_id,
 	chat_id,
 	inventory_id,
-	drop_id
+	drop_id,
+	
+	after_last_element_id,
 } touch_gui_button_id;
 
 typedef enum {

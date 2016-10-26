@@ -40,29 +40,44 @@ using namespace irr::core;
 extern Settings *g_settings;
 
 const char** touchgui_button_imagenames = (const char*[]) {
-	"up_arrow.png",
-	"down_arrow.png",
-	"left_arrow.png",
-	"right_arrow.png",
-	"jump_btn.png",
-	"down.png"
+		"up_one.png",
+		"up_two.png",
+		"up_three.png",
+		"down_one.png",
+		"down_two.png",
+		"down_three.png",
+		"left.png",
+		"right.png",
+		"empty.png"
 };
 
 static irr::EKEY_CODE id2keycode(touch_gui_button_id id)
 {
 	std::string key = "";
 	switch (id) {
-		case forward_id:
+		case forward_one:
 			key = "forward";
+			break;
+		case forward_two:
+			key = "forward";
+			break;
+		case forward_three:
+			key = "forward";
+			break;
+		case backward_one:
+			key = "backward";
+			break;
+		case backward_two:
+			key = "backward";
+			break;
+		case backward_three:
+			key = "backward";
 			break;
 		case left_id:
 			key = "left";
 			break;
 		case right_id:
 			key = "right";
-			break;
-		case backward_id:
-			key = "backward";
 			break;
 		case inventory_id:
 			key = "inventory";
@@ -483,6 +498,67 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 	3 4 5
 	for now only 0, 1, 2, and 4 are used
 	*/
+	/*
+	draw control pad
+	0 3 6
+	1 4 7
+	2 5 8
+	*/
+
+	int number = 0;
+	for (int y = 0; y < 3; ++y)
+		for (int x = 0; x < 3; ++x, ++number) {
+			v2s32 tl;
+			tl.X = y * button_size;
+			tl.Y = m_screensize.Y - button_size * (3 - x);
+
+			rect<s32> button_rect(tl.X, tl.Y, tl.X + button_size, tl.Y + button_size);
+			touch_gui_button_id id = after_last_element_id;
+			std::wstring caption;
+			switch (number) {
+			case 0:
+				id = forward_one;
+				caption = L"^";
+				break;
+			case 3:
+				id = forward_two;
+				caption = L"^";
+				break;
+			case 6:
+				id = forward_three;
+				caption = L"^";
+				break;
+			case 1:
+				id = left_id;
+				caption = L"<";
+				break;
+			case 4:
+				id = empty_id;
+				break;
+			case 2:
+				id = backward_one;
+				caption = L"v";
+				break;
+			case 5:
+				id = backward_two;
+				caption = L"v";
+				break;
+			case 8:
+				id = backward_three;
+				caption = L"v";
+				break;
+			case 7:
+				id = right_id;
+				caption = L">";
+				break;
+			}
+			if (id != after_last_element_id) {
+				initButton(id, button_rect, caption, false);
+			}
+		}
+
+	 
+	/*
 	int number = 0;
 	for (int y = 0; y < 2; ++y)
 		for (int x = 0; x < 3; ++x, ++number) {
@@ -514,6 +590,7 @@ void TouchScreenGUI::init(ISimpleTextureSource* tsrc)
 				initButton(id, button_rect, caption, false);
 				}
 		}
+		*/
 
 	/* init jump button */
 	initButton(jump_id,
