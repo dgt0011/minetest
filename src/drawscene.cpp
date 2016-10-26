@@ -597,7 +597,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 		ss << "load." << loadpicnum << ".png";
 		std::string s = ss.str();
 
-		const std::string slidefilename = getTexturePath(s);
+		std::string slidefilename = getTexturePath(s);
 	
 		if (slidefilename != "")
 		{
