@@ -117,6 +117,9 @@ static irr::EKEY_CODE id2keycode(touch_gui_button_id id)
 		case home_id:
 			key = "home";
 			break;
+		case empty_id:
+			key = "forward";
+			break;
 	}
 	assert(key != "");
 	return keyname_to_keycode(g_settings->get("keymap_" + key).c_str());
