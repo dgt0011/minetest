@@ -586,7 +586,13 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	}
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
-
+	
+	// Render moon
+	std::string moonfilename = getTexturePath("moon.png");
+	video::ITexture* slideshowimages = driver->getTexture(moonfilename.c_str());
+	driver->draw2DImage(slideshowimages, core::position2d<s32>(0, 0),
+		core::rect<s32>(0, 0, 128, 128), 0,
+		video::SColor(255, 255, 255, 255), true);
 
 
 	// draw progress bar
@@ -601,7 +607,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 
 		std::string slidefilename = getTexturePath(s);
 	
-		if (fs::PathExists(slidefilename))
+		if (!fs::PathExists(slidefilename))
 		{
 			slidefilename = getTexturePath("load.png").c_str();
 		}
