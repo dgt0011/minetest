@@ -24,7 +24,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/timetaker.h"
 #include "fontengine.h"
 #include "guiscalingfilter.h"
-
+#include <sstream>
+#include <string>
 typedef enum {
 	LEFT = -1,
 	RIGHT = 1,
@@ -560,23 +561,23 @@ void draw_scene(video::IVideoDriver *driver, scene::ISceneManager *smgr,
 	Additionally, a progressbar can be drawn when percent is set between 0 and 100.
 */
 void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
-		gui::IGUIEnvironment* guienv, float dtime, int percent, bool clouds )
+	gui::IGUIEnvironment* guienv, float dtime, int percent, bool clouds)
 {
-	video::IVideoDriver* driver    = device->getVideoDriver();
-	v2u32 screensize               = porting::getWindowSize();
+	video::IVideoDriver* driver = device->getVideoDriver();
+	v2u32 screensize = porting::getWindowSize();
 
 	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
 	v2s32 center(screensize.X / 2, screensize.Y / 2);
 	core::rect<s32> textrect(center - textsize / 2, center + textsize / 2);
 
 	gui::IGUIStaticText *guitext = guienv->addStaticText(
-			text.c_str(), textrect, false, false);
+		text.c_str(), textrect, false, false);
 	guitext->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_UPPERLEFT);
 
 	bool cloud_menu_background = clouds && g_settings->getBool("menu_clouds");
 	if (cloud_menu_background)
 	{
-		g_menuclouds->step(dtime*3);
+		g_menuclouds->step(dtime * 3);
 		g_menuclouds->render();
 		driver->beginScene(true, true, video::SColor(255, 140, 186, 250));
 		g_menucloudsmgr->drawAll();
@@ -584,18 +585,40 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 
-	// Draw single slide
-	const std::string somestring = getTexturePath("moon.png");
-	 
-	video::ITexture* slideshowimages = driver->getTexture(somestring.c_str());
-	driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
-	driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
-		core::rect<s32>(0, 0, 640, 640), 0,
-		video::SColor(255, 255, 255, 255), true);
+
 
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
+		
+
+		// Draw single slide
+		int loadpicnum = floor(percent / 10);
+	 
+		std::stringstream ss;
+		ss << "load." << loadpicnum << ".png";
+		std::string s = ss.str();
+
+		const std::string slidefilename = getTexturePath(s);
+	
+		if (slidefilename != "")
+		{
+			slidefilename = getTexturePath("load.png");
+		}
+		if (slidefilename != "")
+		{
+
+			video::ITexture* slideshowimages = driver->getTexture(somestring.c_str());
+			driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
+
+			//driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
+			// 	core::rect<s32>(0, 0, 640, 640), 0,
+			//	video::SColor(255, 255, 255, 255), true);
+			driver->draw2DImage(slideshowimages, core::rect<s32>(10, 10, 100, 100),
+				core::rect<s32>(0, 0, 128, 128));
+		}
+		 
+		 
 		v2s32 barsize(
 				// 342 is (approximately) 256/0.75 to keep bar on same size as
 				// before with default settings
