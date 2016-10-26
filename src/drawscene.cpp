@@ -25,6 +25,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "fontengine.h"
 #include "guiscalingfilter.h"
 #include "filesys.h"
+#include "log.h"
 #include <sstream>
 #include <string>
 typedef enum {
@@ -593,7 +594,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	{
 		// Draw single slide
 		int loadpicnum = floor(percent / 10);
-	 
+		
 		std::stringstream ss;
 		ss << "load." << loadpicnum << ".png";
 		std::string s = ss.str();
@@ -610,13 +611,17 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 			video::ITexture* slideshowimages = driver->getTexture(slidefilename.c_str());
 			driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
 
-			//driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
-			// 	core::rect<s32>(0, 0, 640, 640), 0,
-			//	video::SColor(255, 255, 255, 255), true);
-			driver->draw2DImage(slideshowimages, core::rect<s32>(10, 10, 100, 100),
-				core::rect<s32>(0, 0, 128, 128));
+			driver->draw2DImage(slideshowimages, core::position2d<s32>(10, 10),
+			 	core::rect<s32>(0, 0, 128, 128), 0,
+				video::SColor(255, 255, 255, 255), true);
+			 
+			//driver->draw2DImage(slideshowimages, core::rect<s32>(10, 10, 100, 100),
+			//	core::rect<s32>(0, 0, 128, 128));
 		}
-		 
+		else
+		{
+			infostream << "Cannot find loader image : " << slidefilename.c_str() << std::endl;
+		}
 		 
 		v2s32 barsize(
 				// 342 is (approximately) 256/0.75 to keep bar on same size as
