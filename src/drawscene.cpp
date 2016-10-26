@@ -608,7 +608,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 		if (slidefilename != "")
 		{
 
-			video::ITexture* slideshowimages = driver->getTexture(somestring.c_str());
+			video::ITexture* slideshowimages = driver->getTexture(slidefilename.c_str());
 			driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
 
 			//driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
