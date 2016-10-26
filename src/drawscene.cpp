@@ -603,7 +603,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	
 		if (slidefilename != "")
 		{
-			slidefilename = getTexturePath("load.png");
+			slidefilename = getTexturePath("load.png").cstr();
 		}
 		if (slidefilename != "")
 		{
