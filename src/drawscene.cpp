@@ -587,7 +587,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	// Draw single slide
 	const std::string somestring = getTexturePath("moon.png");
 	 
-	video::ITexture* slideshowimages = driver->getTexture(getTexturePath(somestring));
+	video::ITexture* slideshowimages = driver->getTexture(somestring.c_str());
 	driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
 	driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
 		core::rect<s32>(0, 0, 640, 640), 0,
