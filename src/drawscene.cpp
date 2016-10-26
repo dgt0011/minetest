@@ -590,8 +590,6 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
-		
-
 		// Draw single slide
 		int loadpicnum = floor(percent / 10);
 	 
@@ -603,7 +601,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	
 		if (slidefilename != "")
 		{
-			slidefilename = getTexturePath("load.png").cstr();
+			slidefilename = getTexturePath("load.png").c_str();
 		}
 		if (slidefilename != "")
 		{
