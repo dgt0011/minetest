@@ -584,6 +584,13 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 
+	// Draw single slide
+	video::ITexture* slideshowimages = driver->getTexture(getTexturePath("moon.png"));
+	driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
+	driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
+		core::rect<s32>(0, 0, 640, 640), 0,
+		video::SColor(255, 255, 255, 255), true);
+
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
