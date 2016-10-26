@@ -48,7 +48,9 @@ const char** touchgui_button_imagenames = (const char*[]) {
 		"down_three.png",
 		"left.png",
 		"right.png",
-		"empty.png"
+		"empty.png",
+		"jump_btn.png",
+		"down.png"
 };
 
 static irr::EKEY_CODE id2keycode(touch_gui_button_id id)

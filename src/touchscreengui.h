@@ -44,7 +44,6 @@ typedef enum {
 	left_id,
 	right_id,
 	empty_id,
-
 	jump_id,	
 	crunch_id,
 	 
