@@ -24,6 +24,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/timetaker.h"
 #include "fontengine.h"
 #include "guiscalingfilter.h"
+#include "filesys.h"
 #include <sstream>
 #include <string>
 typedef enum {
@@ -599,11 +600,11 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 
 		std::string slidefilename = getTexturePath(s);
 	
-		if (slidefilename != "")
+		if (fs::PathExists(slidefilename))
 		{
 			slidefilename = getTexturePath("load.png").c_str();
 		}
-		if (slidefilename != "")
+		if (fs::PathExists(slidefilename))
 		{
 
 			video::ITexture* slideshowimages = driver->getTexture(slidefilename.c_str());
