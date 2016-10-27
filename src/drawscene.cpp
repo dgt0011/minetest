@@ -569,7 +569,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	v2u32 screensize = porting::getWindowSize();
 
 	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
-	v2s32 center(screensize.X / 2, screensize.Y / 2);
+	v2s32 center(screensize.X / 2, screensize.Y - (screensize.Y / 4)); // put the loader on the bottom
 	core::rect<s32> textrect(center - textsize / 2, center + textsize / 2);
 
 	gui::IGUIStaticText *guitext = guienv->addStaticText(
@@ -587,14 +587,20 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 	
-	// Render moon
-	std::string moonfilename = getTexturePath("moon.png");
+	// Render Background
+	std::string moonfilename = getTexturePath("background.png");
 	video::ITexture* slideshowimages = driver->getTexture(moonfilename.c_str());
-	driver->draw2DImage(slideshowimages, core::position2d<s32>(0, 0),
-		core::rect<s32>(0, 0, 128, 128), 0,
-		video::SColor(255, 255, 255, 255), true);
+	//driver->draw2DImage(slideshowimages, core::position2d<s32>(0, 0),
+	//	core::rect<s32>(0, 0, 898, 540), 0,
+	//	video::SColor(255, 255, 255, 255), true);
 
-
+	driver->draw2DImage(slideshowimages,
+		core::rect<s32>(0, 0, screensize.X, screensize.Y),
+		core::rect<s32>(0, 0, 898, 540),
+		0,
+		0,
+		true);
+	 
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
@@ -617,7 +623,7 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 			video::ITexture* slideshowimages = driver->getTexture(slidefilename.c_str());
 			driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
 
-			driver->draw2DImage(slideshowimages, core::position2d<s32>(10, 10),
+			driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
 			 	core::rect<s32>(0, 0, 128, 128), 0,
 				video::SColor(255, 255, 255, 255), true);
 			 
