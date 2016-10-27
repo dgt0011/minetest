@@ -9,7 +9,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.net.Uri;
 
+import android.speech.tts.TextToSpeech;
+
+
 public class MtNativeActivity extends NativeActivity {
+
+    TextToSpeech t1;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -19,8 +25,29 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessagReturnCode = -1;
 		m_MessageReturnValue = "";
 		makeFullScreen();
+		initSpeech();
+	
+		
 	}
+	private void initSpeech()
+	{
+		t1=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+         @Override
+         public void onInit(int status) {
+            if(status != TextToSpeech.ERROR) {
+               t1.setLanguage(Locale.UK);
+            }
+         }
+        });
+	
+	}
+	
+	public void speakText(String someText) {
+	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
+	}	
 
+	
+	
 	public void makeFullScreen() {
         if (Build.VERSION.SDK_INT >= 19) {
             this.getWindow().getDecorView().setSystemUiVisibility(
@@ -43,13 +70,14 @@ public class MtNativeActivity extends NativeActivity {
 	}
 
 	public void copyAssets() {
+		speakText("Welcome to eidy.  I am now copying assets.  Please stand by.");
 		Intent intent = new Intent(this, MinetestAssetCopy.class);
 		startActivity(intent);
 	}
 
 	public void showDialog(String acceptButton, String hint, String current,
 			int editType) {
-
+		speakText("Enter some text.");
 		Intent intent = new Intent(this, MinetestTextEntry.class);
 		Bundle params = new Bundle();
 		params.putString("acceptButton", acceptButton);
