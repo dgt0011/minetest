@@ -10,7 +10,7 @@ import android.view.WindowManager;
 import android.net.Uri;
 
 import android.speech.tts.TextToSpeech;
-
+import java.util.Locale;
 
 public class MtNativeActivity extends NativeActivity {
 
