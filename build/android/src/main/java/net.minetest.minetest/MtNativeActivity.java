@@ -32,7 +32,7 @@ public class MtNativeActivity extends NativeActivity {
 	{	 
 		try
 		{
-			InputStream is = getAssets().open(@"eidy/minetest.conf");
+			InputStream is = getAssets().open("eidy/minetest.conf");
 			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 	
 			String line = reader.readLine();
