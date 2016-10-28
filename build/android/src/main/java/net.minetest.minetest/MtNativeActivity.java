@@ -31,13 +31,21 @@ public class MtNativeActivity extends NativeActivity {
 	}
 	private void initSpeech()
 	{
-		t1=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-         @Override
-         public void onInit(int status) {
-            if(status != TextToSpeech.ERROR) {
-               t1.setLanguage(Locale.UK);
+		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+			@Override
+            public void onInit(int status) {
+                
+                if(status == TextToSpeech.SUCCESS){
+                    int result=tts.setLanguage(Locale.US);
+                    if(result==TextToSpeech.LANG_MISSING_DATA ||
+                            result==TextToSpeech.LANG_NOT_SUPPORTED){
+                        Log.e("error", "This Language is not supported");
+                    }
+                   
+                }
+                else
+                    Log.e("error", "Initialisation Failed!");
             }
-         }
         });
 	
 	}
