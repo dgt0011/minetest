@@ -26,7 +26,7 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessageReturnValue = "";
 		makeFullScreen();
 		initSpeech();
-	
+		speakText("Welcome to eidy.  I am now copying assets.  Please stand by.");
 		
 	}
 	private void initSpeech()
@@ -51,7 +51,10 @@ public class MtNativeActivity extends NativeActivity {
 	}
 	
 	public void speakText(String someText) {
+		if (t1 != null)
+		{
 	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
+		}
 	}	
 
 	
@@ -78,7 +81,7 @@ public class MtNativeActivity extends NativeActivity {
 	}
 
 	public void copyAssets() {
-		speakText("Welcome to eidy.  I am now copying assets.  Please stand by.");
+		
 		Intent intent = new Intent(this, MinetestAssetCopy.class);
 		startActivity(intent);
 	}
