@@ -40,7 +40,7 @@ public class MtNativeActivity extends NativeActivity {
 			{
 			 
 				line = reader.readLine();
-				if (line.startsWith("language=") 
+				if (line.startsWith("language=")) 
 				{
 					return new Locale(line.split("=")[1]);
 				}
@@ -88,8 +88,7 @@ public class MtNativeActivity extends NativeActivity {
 		}
 	}	
 
-	
-	
+	 
 	public void makeFullScreen() {
         if (Build.VERSION.SDK_INT >= 19) {
             this.getWindow().getDecorView().setSystemUiVisibility(
