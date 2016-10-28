@@ -25,10 +25,41 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessagReturnCode = -1;
 		m_MessageReturnValue = "";
 		makeFullScreen();
-		initSpeech();
-		speakText("Welcome to eidy.  I am now copying assets.  Please stand by.");
-		
+		initSpeech();	
 	}
+	
+	private Locale GetLocale()
+	{	 
+		try
+		{
+			InputStream is = getAssets().open(@"eidy/minetest.conf");
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+	
+			String line = reader.readLine();
+			while (line != null)
+			{
+			 
+				line = reader.readLine();
+				if (line.startsWith("language=") 
+				{
+					return new Locale(line.split("=")[1]);
+				}
+				
+			}
+			is.close();
+		}
+		catch (IOException e1)
+		{
+			Log.e("error","Error trying to retrieve language from minetest.conf");
+			e1.printStackTrace();
+		}
+		finally
+		{
+			return Locale.US;
+		}
+	}
+	
+	
 	private void initSpeech()
 	{
 		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
