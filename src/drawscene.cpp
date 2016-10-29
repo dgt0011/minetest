@@ -587,23 +587,40 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 	
-	// Render Background
-	std::string moonfilename = getTexturePath("background.png");
-	video::ITexture* slideshowimages = driver->getTexture(moonfilename.c_str());
+
 	//driver->draw2DImage(slideshowimages, core::position2d<s32>(0, 0),
 	//	core::rect<s32>(0, 0, 898, 540), 0,
 	//	video::SColor(255, 255, 255, 255), true);
 
-	driver->draw2DImage(slideshowimages,
-		core::rect<s32>(0, 0, screensize.X, screensize.Y),
-		core::rect<s32>(0, 0, 898, 540),
-		0,
-		0,
-		true);
-	 
+
+	// Add label
+	//static bool beenhere = false;
+	//if (!beenhere)
+	//{ 
+	//	guienv->addStaticText(L"hello!",
+	//		core::rect<s32>(0, 0, screensize.X, screensize.Y), true);
+	//	beenhere = true;
+	//}
+
+	// Mouse Fun!!
+	//core::position2d<s32> m = device->getCursorControl()->getPosition();
+	//driver->draw2DRectangle(video::SColor(100, 255, 255, 255),
+	//	core::rect<s32>(m.X - 20, m.Y - 20, m.X + 20, m.Y + 20));
+
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
+
+		// Render Background
+		std::string moonfilename = getTexturePath("background.png");
+		video::ITexture* slideshowimages = driver->getTexture(moonfilename.c_str());
+		driver->draw2DImage(slideshowimages,
+			core::rect<s32>(0, 0, screensize.X, screensize.Y),
+			core::rect<s32>(0, 0, 898, 540),
+			0,
+			0,
+			true);
+
 		// Draw single slide
 		int loadpicnum = floor(percent / 10);
 		

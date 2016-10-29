@@ -149,6 +149,7 @@ enum ClientEventType
 	CE_SET_SKY,
 	CE_OVERRIDE_DAY_NIGHT_RATIO,
 	CE_BROWSER_SHOW,
+	CE_SPEAK_TEXT 
 };
 
 struct ClientEvent
@@ -249,6 +250,10 @@ struct ClientEvent
 			u32 id;
 			std::string *address;
 		} browser_show;
+		struct{
+			u32 id;
+			std::string *text;
+		} speak_text;
 	};
 };
 
@@ -394,6 +399,7 @@ public:
 	void handleCommand_AddParticleSpawner(NetworkPacket* pkt);
 	void handleCommand_DeleteParticleSpawner(NetworkPacket* pkt);
 	void handleCommand_SetBrowserAddress(NetworkPacket* pkt);
+	void handleCommand_SpeakText(NetworkPacket* pkt);
 	void handleCommand_HudAdd(NetworkPacket* pkt);
 	void handleCommand_HudRemove(NetworkPacket* pkt);
 	void handleCommand_HudChange(NetworkPacket* pkt);

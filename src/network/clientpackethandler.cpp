@@ -1016,6 +1016,24 @@ void Client::handleCommand_SetBrowserAddress(NetworkPacket* pkt)
 	m_client_event_queue.push(event);
 }
 
+void Client::handleCommand_SpeakText(NetworkPacket* pkt)
+{
+	u32 id;
+	std::string text;
+
+	*pkt >> id;
+	*pkt >> text;
+
+	actionstream << "Client::handleCommand_SpeakText text:" << text << std::endl;
+
+	ClientEvent event;
+	event.type = CE_SPEAK_TEXT;
+	event.speak_text.id = id;
+	event.speak_text.text = new std::string(text);
+
+	m_client_event_queue.push(event);
+}
+
 void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 {
 	std::string datastring(pkt->getString(0), pkt->getSize());

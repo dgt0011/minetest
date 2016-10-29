@@ -3569,6 +3569,25 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 			porting::showBrowser(*event.browser_show.address);
 #endif
 
+		} else if (event.type == CE_SPEAK_TEXT) {
+			u32 id = event.speak_text.id;
+
+#ifdef _WIN32
+
+			std::string lang = g_settings->get("language");
+			if (lang == "") lang = "en";
+		 
+			std::string command;
+			// 'espeak -m --path="'..speak.binpath..'" -s 125 -v ' .. LANG ..  '+f5 "' .. stufftosay ..'"' 
+			
+			command = "start espeak --path=\".\" -s 125 -v " + lang + "+f5 \"" + *event.speak_text.text + "\"";
+			system(command.c_str());
+#endif
+
+#ifdef ANDROID
+			porting::speakText(*event.speak_text.text);
+#endif
+
 		}
 	}
 }

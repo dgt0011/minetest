@@ -298,6 +298,9 @@ private:
 	// set_browser(self, id, address)
 	static int l_set_browser(lua_State *L);
 
+	// speak_text(self, id, address)
+	static int l_speak_text(lua_State *L);
+
 	// get_eye_offset(self)
 	static int l_get_eye_offset(lua_State *L);
 

@@ -1713,6 +1713,23 @@ int ObjectRef::l_set_browser(lua_State *L)
 	return 0;	
 }
 
+// set_browser()
+int ObjectRef::l_speak_text(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+
+	ObjectRef *ref = checkobject(L, 1);
+	PlayerSAO* co = getplayersao(ref);
+	if (co == NULL) return 0;
+
+	if (lua_isstring(L, 2)) {
+		std::string text = lua_tostring(L, 2);
+		getServer(L)->SpeakText(((PlayerSAO*)co)->getPeerID(), text);
+	}
+
+	return 0;
+}
+
 // get_day_night_ratio(self)
 int ObjectRef::l_get_day_night_ratio(lua_State *L)
 {
@@ -1876,6 +1893,7 @@ const luaL_reg ObjectRef::methods[] = {
 	luamethod(ObjectRef, get_local_animation),
 	luamethod(ObjectRef, set_eye_offset),
 	luamethod(ObjectRef, set_browser),
+	luamethod(ObjectRef, speak_text),
 	luamethod(ObjectRef, get_eye_offset),
 	luamethod(ObjectRef, set_nametag_attributes),
 	luamethod(ObjectRef, get_nametag_attributes),	
