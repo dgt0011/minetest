@@ -256,6 +256,21 @@ void showBrowser(const std::string& url)
 	jnienv->CallVoidMethod(app_global->activity->clazz, showbrowserMethod, jUrl);
 }
 
+void speakText(const std::string& text)
+{
+	jmethodID speaktextMethod = jnienv->GetMethodID(nativeActivity,"speakText",
+		"(Ljava/lang/String;)V");
+
+	if (NULL == speaktextMethod) {
+		assert("porting::speakText unable to find java show browser method" == 0);
+	} 
+
+	jstring jText = jnienv->NewStringUTF(text.c_str());
+	
+	jnienv->CallVoidMethod(app_global->activity->clazz, speaktextMethod, jText);
+}
+
+
 int getInputDialogState()
 {
 	jmethodID dialogstate = jnienv->GetMethodID(nativeActivity,
