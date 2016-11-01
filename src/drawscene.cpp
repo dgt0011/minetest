@@ -562,6 +562,15 @@ void draw_scene(video::IVideoDriver *driver, scene::ISceneManager *smgr,
 	Text will be removed when the screen is drawn the next time.
 	Additionally, a progressbar can be drawn when percent is set between 0 and 100.
 */
+struct LoadScreenSpriteType
+{
+	 
+	u32 x;
+	u32 y;
+	u32 width;
+	u32 height;
+	std::string Filename;
+};
 void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	gui::IGUIEnvironment* guienv, float dtime, int percent, bool clouds)
 {
@@ -610,47 +619,79 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
+		static u32 start_time = device->getTimer()->getRealTime(); // First Time	 
+		u32 millisecs_since_start = floor((device->getTimer()->getRealTime() - start_time));
+		static u32 last_update = 0;
+		static u32 current_background = 0;
 
-		// Render Background
-		std::string moonfilename = getTexturePath("background.png");
-		video::ITexture* slideshowimages = driver->getTexture(moonfilename.c_str());
+		if (millisecs_since_start > (last_update + 500))
+		{
+			last_update = millisecs_since_start;
+			current_background++;
+		}
+		if (current_background > 19) current_background = 19;
+
+		std::stringstream backgroundss;
+		backgroundss << "background." << current_background << ".png";
+		std::string backgroundfilename = backgroundss.str();
+	  
+		std::string backgroundpath = getTexturePath(backgroundfilename);
+		video::ITexture* slideshowimages = driver->getTexture(backgroundpath.c_str());
 		driver->draw2DImage(slideshowimages,
 			core::rect<s32>(0, 0, screensize.X, screensize.Y),
-			core::rect<s32>(0, 0, 898, 540),
+			core::rect<s32>(0, 0, 1200, 590),
 			0,
 			0,
 			true);
 
-		// Draw single slide
-		int loadpicnum = floor(percent / 10);
-		
-		std::stringstream ss;
-		ss << "load." << loadpicnum << ".png";
-		std::string s = ss.str();
+		infostream << "Background Filename : '" << backgroundfilename << "' Timer : " << millisecs_since_start;
 
-		std::string slidefilename = getTexturePath(s);
-	
-		if (!fs::PathExists(slidefilename))
+		// If the background is 5, show some interesting items
+		if (current_background == 19)
 		{
-			slidefilename = getTexturePath("load.png").c_str();
-		}
-		if (fs::PathExists(slidefilename))
-		{
+			static bool spriteinit = false;
+			static LoadScreenSpriteType target[1];
+			if (!spriteinit)
+			{
+				target[0].x = 50;
+				target[0].y = screensize.Y - floor(screensize.Y / 3);
+				target[0].height = 256;
+				target[0].width = 256;
+				target[0].Filename = getTexturePath("zebra.png");
+				spriteinit = true;
+			}
 
-			video::ITexture* slideshowimages = driver->getTexture(slidefilename.c_str());
-			driver->makeColorKeyTexture(slideshowimages, core::position2d<s32>(0, 0));
+			// Render sprites
+			for (int sn = 0; sn < 1; sn++)
+			{
+				video::ITexture* sprites = driver->getTexture(target[0].Filename.c_str());
+				//driver->makeColorKeyTexture(sprites, core::position2d<s32>(0, 0));
 
-			driver->draw2DImage(slideshowimages, core::position2d<s32>(50, 50),
-			 	core::rect<s32>(0, 0, 128, 128), 0,
-				video::SColor(255, 255, 255, 255), true);
-			 
-			//driver->draw2DImage(slideshowimages, core::rect<s32>(10, 10, 100, 100),
-			//	core::rect<s32>(0, 0, 128, 128));
+				driver->draw2DImage(sprites, core::position2d<s32>(target[0].x, target[0].y),
+					core::rect<s32>(0, 0, target[0].width, target[0].height), 0,
+					video::SColor(255, 255, 255, 255), true);
+
+				//driver->draw2DImage(sprites,
+				//	core::rect<s32>(target[0].x, target[0].y, target[0].width, target[0].height),
+				//	core::rect<s32>(0, 0, 256, 256),
+				//	0,
+				//	video::SColor(255, 255, 255, 255),
+				//	true);
+			}
+			// Is the player touching it?
+			core::position2d<s32> mpos = device->getCursorControl()->getPosition();
+			for (int sn = 0; sn < 1; sn++)
+			{
+				if ((mpos.X > target[sn].x && mpos.X < (target[sn].x + target[sn].width)) &&
+					(mpos.Y > target[sn].y && mpos.Y < (target[sn].y + target[sn].height))) 
+				{
+					// Hit!  Move it elsewhere
+					target[sn].x = myrand_range(0, screensize.X - target[sn].width);
+				    //target[sn].y = myrand_range(0, screensize.Y - target[sn].height);
+				}
+			}
 		}
-		else
-		{
-			infostream << "Cannot find loader image : " << slidefilename.c_str() << std::endl;
-		}
+  
 		 
 		v2s32 barsize(
 				// 342 is (approximately) 256/0.75 to keep bar on same size as
