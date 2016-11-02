@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "guiscalingfilter.h"
 #include "filesys.h"
 #include "log.h"
+#include <exception>
 #include <sstream>
 #include <string>
 typedef enum {
@@ -649,6 +650,8 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 		// If the background is 5, show some interesting items
 		if (current_background == 19)
 		{
+			try
+			{ 
 			static bool spriteinit = false;
 			static LoadScreenSpriteType target[1];
 			if (!spriteinit)
@@ -689,6 +692,12 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 					target[sn].x = myrand_range(0, screensize.X - target[sn].width);
 				    //target[sn].y = myrand_range(0, screensize.Y - target[sn].height);
 				}
+			}
+			}
+			catch (std::exception& e)
+			{
+			 
+				errorstream << "An exception while executing zebra game code occurred. Exception : " << e.what() << '\n';
 			}
 		}
   
