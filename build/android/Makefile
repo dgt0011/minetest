@@ -75,7 +75,9 @@ OPENAL_DIR = $(ANDR_ROOT)/deps/openal-soft/
 OPENAL_LIB = $(OPENAL_DIR)libs/$(TARGET_ABI)/libopenal.so
 OPENAL_TIMESTAMP = $(OPENAL_DIR)/timestamp
 OPENAL_TIMESTAMP_INT = $(ANDR_ROOT)/deps/openal_timestamp
-OPENAL_URL_GIT = https://github.com/apportable/openal-soft
+#OPENAL_URL_GIT = https://github.com/apportable/openal-soft
+# Try using more recent merge of openal
+OPENAL_URL_GIT = https://github.com/apportable/openal-soft/tree/li-merge
 
 OGG_DIR = $(ANDR_ROOT)/deps/libvorbis-libogg-android/
 OGG_LIB = $(OGG_DIR)libs/$(TARGET_ABI)/libogg.so
