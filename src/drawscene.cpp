@@ -647,60 +647,62 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 
 		infostream << "Background Filename : '" << backgroundfilename << "' Timer : " << millisecs_since_start;
 
-		// If the background is 5, show some interesting items
+#ifndef __ANDROID__
+		// Bypass
 		if (current_background == 19)
 		{
 			try
 			{ 
-			static bool spriteinit = false;
-			static LoadScreenSpriteType target[1];
-			if (!spriteinit)
-			{
-				target[0].x = 50;
-				target[0].y = screensize.Y - floor(screensize.Y / 3);
-				target[0].height = 256;
-				target[0].width = 256;
-				target[0].Filename = getTexturePath("zebra.png");
-				spriteinit = true;
-			}
-
-			// Render sprites
-			for (int sn = 0; sn < 1; sn++)
-			{
-				video::ITexture* sprites = driver->getTexture(target[0].Filename.c_str());
-				//driver->makeColorKeyTexture(sprites, core::position2d<s32>(0, 0));
-
-				driver->draw2DImage(sprites, core::position2d<s32>(target[0].x, target[0].y),
-					core::rect<s32>(0, 0, target[0].width, target[0].height), 0,
-					video::SColor(255, 255, 255, 255), true);
-
-				//driver->draw2DImage(sprites,
-				//	core::rect<s32>(target[0].x, target[0].y, target[0].width, target[0].height),
-				//	core::rect<s32>(0, 0, 256, 256),
-				//	0,
-				//	video::SColor(255, 255, 255, 255),
-				//	true);
-			}
-			// Is the player touching it?
-			core::position2d<s32> mpos = device->getCursorControl()->getPosition();
-			for (int sn = 0; sn < 1; sn++)
-			{
-				if ((mpos.X > target[sn].x && mpos.X < (target[sn].x + target[sn].width)) &&
-					(mpos.Y > target[sn].y && mpos.Y < (target[sn].y + target[sn].height))) 
+				static bool spriteinit = false;
+				static LoadScreenSpriteType target[1];
+				if (!spriteinit)
 				{
-					// Hit!  Move it elsewhere
-					target[sn].x = myrand_range(0, screensize.X - target[sn].width);
-				    //target[sn].y = myrand_range(0, screensize.Y - target[sn].height);
+					target[0].x = 50;
+					target[0].y = screensize.Y - floor(screensize.Y / 3);
+					target[0].height = 256;
+					target[0].width = 256;
+					target[0].Filename = getTexturePath("zebra.png");
+					spriteinit = true;
 				}
-			}
+
+				// Render sprites
+				for (int sn = 0; sn < 1; sn++)
+				{
+					video::ITexture* sprites = driver->getTexture(target[0].Filename.c_str());
+					//driver->makeColorKeyTexture(sprites, core::position2d<s32>(0, 0));
+
+					driver->draw2DImage(sprites, core::position2d<s32>(target[0].x, target[0].y),
+						core::rect<s32>(0, 0, target[0].width, target[0].height), 0,
+						video::SColor(255, 255, 255, 255), true);
+
+					//driver->draw2DImage(sprites,
+					//	core::rect<s32>(target[0].x, target[0].y, target[0].width, target[0].height),
+					//	core::rect<s32>(0, 0, 256, 256),
+					//	0,
+					//	video::SColor(255, 255, 255, 255),
+					//	true);
+				}
+
+				// Is the player touching it?
+				core::position2d<s32> mpos = device->getCursorControl()->getPosition();
+				for (int sn = 0; sn < 1; sn++)
+				{
+					if ((mpos.X > target[sn].x && mpos.X < (target[sn].x + target[sn].width)) &&
+						(mpos.Y > target[sn].y && mpos.Y < (target[sn].y + target[sn].height))) 
+					{
+						// Hit!  Move it elsewhere
+						target[sn].x = myrand_range(0, screensize.X - target[sn].width);
+						//target[sn].y = myrand_range(0, screensize.Y - target[sn].height);
+					}
+				}
+
 			}
 			catch (std::exception& e)
-			{
-			 
+			{			 
 				errorstream << "An exception while executing zebra game code occurred. Exception : " << e.what() << '\n';
 			}
 		}
-  
+#endif 
 		 
 		v2s32 barsize(
 				// 342 is (approximately) 256/0.75 to keep bar on same size as
