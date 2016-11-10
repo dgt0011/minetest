@@ -54,7 +54,7 @@ public class MinetestAssetCopy extends Activity
 
         if (!isNewInstall())
         {
-            Log.i("MinetestAssetCopy", "Detected Version : " + getVersionString() + " no version update required.");
+            Log.i("MinetestAssetCopy", "Detected Version : " + getInstalledVersion() + " - no version update required.");
             finish();
             return;
         }
@@ -81,7 +81,7 @@ public class MinetestAssetCopy extends Activity
         return this;
     }
 
-    private String getVersionString()
+    private String getPackageVersion()
     {
 
         String version = "";
@@ -97,12 +97,17 @@ public class MinetestAssetCopy extends Activity
         return R.string.buildid + version;
     }
 
-    private boolean isNewInstall()
+    private String getInstalledVersion()
     {
         SharedPreferences prefs = getPreferences(MODE_PRIVATE);
-        String storedVersion = prefs.getString("installVersion", "");
-        String currentVersion = getVersionString();
-        return (storedVersion != storedVersion);
+        return prefs.getString("installVersion", "");
+    }
+    private boolean isNewInstall()
+    {
+
+        String storedVersion = getInstalledVersion();
+        String currentVersion = getPackageVersion();
+        return (currentVersion != storedVersion);
     }
 
     private void updateInstallVersion()
@@ -111,9 +116,9 @@ public class MinetestAssetCopy extends Activity
 
         SharedPreferences sharedPref = getPreferences(MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putString("installVersion", getVersionString());
+        editor.putString("installVersion", getPackageVersion());
         editor.commit();
-        Log.i("MinetestAssetCopy", "Wrote Version : " + getVersionString());
+        Log.i("MinetestAssetCopy", "Wrote Version : " + getPackageVersion());
 
 
     }
