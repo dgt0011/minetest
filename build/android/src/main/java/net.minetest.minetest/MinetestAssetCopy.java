@@ -29,9 +29,6 @@ import android.graphics.Paint;
 import android.text.TextPaint;
 import android.content.SharedPreferences;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
 
 
 public class MinetestAssetCopy extends Activity
