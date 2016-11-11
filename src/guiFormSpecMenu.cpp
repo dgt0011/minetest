@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <iterator>
 #include <sstream>
 #include <limits>
+#include <regex>
 #include "guiFormSpecMenu.h"
 #include "guiTable.h"
 #include "constants.h"
@@ -111,6 +112,7 @@ GUIFormSpecMenu::GUIFormSpecMenu(irr::IrrlichtDevice* dev,
 	, m_JavaDialogFieldName("")
 #endif
 {
+	 
 	current_keys_pending.key_down = false;
 	current_keys_pending.key_up = false;
 	current_keys_pending.key_enter = false;
@@ -1511,7 +1513,8 @@ void GUIFormSpecMenu::parseItemImageButton(parserData* data,std::string element)
 		m_static_texts.push_back(StaticTextSpec(utf8_to_wide(label), rect, e));
 		return;
 	}
-	errorstream<< "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'"  << std::endl;
+ 
+
 }
 
 void GUIFormSpecMenu::parseBox(parserData* data,std::string element)
@@ -2299,15 +2302,35 @@ void GUIFormSpecMenu::drawSelectedItem()
 	core::rect<s32> imgrect(0,0,imgsize.X,imgsize.Y);
 	core::rect<s32> rect = imgrect + (m_pointer - imgrect.getCenter());
 	drawItemStack(driver, m_font, stack, rect, NULL, m_gamedef, IT_ROT_DRAGGED);
+
+	errorstream << "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'" << std::endl;
+
 }
 
 void GUIFormSpecMenu::drawMenu()
 {
 	if(m_form_src){
-		std::string newform = m_form_src->getForm();
+
+		std::string formspecstring = m_form_src->getForm();
+		std::string newform = formspecstring;
+
+
+		std::cmatch cm;
+		std::regex e(".*size\\[(.*)\\,(.*)(\\]|,)");
+		std::regex_match(formspecstring.c_str(), cm, e);
+		if (cm.size() > 1)
+		{
+	 
+			//newform = newform + "button_exit[" + cm[0].str() + ",0;1,1;;<]";
+			//newform = newform + "button_exit[" + std::to_string(stof(cm[1].str()) - 0.5 ) + ",0;0.8,0.5;;x]";
+			newform = newform + "image_button_exit[" + std::to_string(stof(cm[1].str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";
+		 
+		}
+	 
 		if(newform != m_formspec_string){
 			m_formspec_string = newform;
 			regenerateGui(m_screensize_old);
+			 
 		}
 	}
 
