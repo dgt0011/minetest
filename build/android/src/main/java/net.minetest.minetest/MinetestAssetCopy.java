@@ -351,6 +351,8 @@ public class MinetestAssetCopy extends Activity
                     e.printStackTrace();
                 }
             }
+
+            updateInstallVersion();
             return "";
         }
 
@@ -564,9 +566,10 @@ public class MinetestAssetCopy extends Activity
             }
         }
 
+        @Override
         protected void onPostExecute(String result)
         {
-            updateInstallVersion();
+
             finish();
         }
 
