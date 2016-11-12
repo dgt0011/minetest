@@ -23,7 +23,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <iterator>
 #include <sstream>
 #include <limits>
-#include <regex>
 #include "guiFormSpecMenu.h"
 #include "guiTable.h"
 #include "constants.h"
@@ -2303,7 +2302,7 @@ void GUIFormSpecMenu::drawSelectedItem()
 	core::rect<s32> rect = imgrect + (m_pointer - imgrect.getCenter());
 	drawItemStack(driver, m_font, stack, rect, NULL, m_gamedef, IT_ROT_DRAGGED);
 
-	errorstream << "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'" << std::endl;
+	//errorstream << "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'" << std::endl;
 
 }
 
@@ -2314,18 +2313,20 @@ void GUIFormSpecMenu::drawMenu()
 		std::string formspecstring = m_form_src->getForm();
 		std::string newform = formspecstring;
 
-
-		std::cmatch cm;
-		std::regex e(".*size\\[(.*)\\,(.*)(\\]|,)");
-		std::regex_match(formspecstring.c_str(), cm, e);
-		if (cm.size() > 1)
+		size_t sizepos = newform.find("size[");
+		if (sizepos != std::string::npos)
 		{
-	 
-			//newform = newform + "button_exit[" + cm[0].str() + ",0;1,1;;<]";
-			//newform = newform + "button_exit[" + std::to_string(stof(cm[1].str()) - 0.5 ) + ",0;0.8,0.5;;x]";
-			newform = newform + "image_button_exit[" + std::to_string(stof(cm[1].str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";
-		 
+			
+			size_t startpos = sizepos + 5;
+			size_t numchars = 0;
+			for (; newform.substr(startpos + numchars, 1) != ","; numchars++);
+			std::string widthstr = newform.substr(startpos, numchars);
+			errorstream << "Size element found! <" << widthstr << ">" << std::endl;
+			newform = newform + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";
+			errorstream << newform << std::endl;
 		}
+	 
+ 
 	 
 		if(newform != m_formspec_string){
 			m_formspec_string = newform;
