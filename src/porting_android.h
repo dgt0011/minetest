@@ -64,6 +64,11 @@ void copyAssets();
 void showInputDialog(const std::string& acceptButton,
 		const  std::string& hint, const std::string& current, int editType);
 
+/**
+* Use TTS to say something
+* @param url The URL Address to open the platforms native browser and navigate to
+*/
+void speakText(const std::string& someText);
 
 /**
  * Open the devices default browser with a specified URL

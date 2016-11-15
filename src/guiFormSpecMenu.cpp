@@ -111,6 +111,7 @@ GUIFormSpecMenu::GUIFormSpecMenu(irr::IrrlichtDevice* dev,
 	, m_JavaDialogFieldName("")
 #endif
 {
+	 
 	current_keys_pending.key_down = false;
 	current_keys_pending.key_up = false;
 	current_keys_pending.key_enter = false;
@@ -1511,7 +1512,8 @@ void GUIFormSpecMenu::parseItemImageButton(parserData* data,std::string element)
 		m_static_texts.push_back(StaticTextSpec(utf8_to_wide(label), rect, e));
 		return;
 	}
-	errorstream<< "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'"  << std::endl;
+ 
+
 }
 
 void GUIFormSpecMenu::parseBox(parserData* data,std::string element)
@@ -2299,15 +2301,35 @@ void GUIFormSpecMenu::drawSelectedItem()
 	core::rect<s32> imgrect(0,0,imgsize.X,imgsize.Y);
 	core::rect<s32> rect = imgrect + (m_pointer - imgrect.getCenter());
 	drawItemStack(driver, m_font, stack, rect, NULL, m_gamedef, IT_ROT_DRAGGED);
+
+	//errorstream << "Invalid ItemImagebutton element(" << parts.size() << "): '" << element << "'" << std::endl;
+
 }
 
+std::string addCloseWidgetToFormspec(std::string formspecstring)
+{
+	std::string modifiedFormSpec = formspecstring;
+	size_t sizepos = modifiedFormSpec.find("size[");
+	if (sizepos != std::string::npos)
+	{
+		size_t startpos = sizepos + 5;
+		size_t numchars = 0;
+		for (; modifiedFormSpec.substr(startpos + numchars, 1) != ","; numchars++);
+		std::string widthstr = modifiedFormSpec.substr(startpos, numchars);	 
+		modifiedFormSpec = modifiedFormSpec + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";		
+	}
+
+	return modifiedFormSpec;
+}
 void GUIFormSpecMenu::drawMenu()
 {
 	if(m_form_src){
-		std::string newform = m_form_src->getForm();
+		std::string newform = addCloseWidgetToFormspec(m_form_src->getForm());
+  
 		if(newform != m_formspec_string){
 			m_formspec_string = newform;
 			regenerateGui(m_screensize_old);
+			 
 		}
 	}
 

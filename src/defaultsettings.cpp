@@ -56,6 +56,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("keymap_toggle_hud", "KEY_F1");
 	settings->setDefault("keymap_toggle_chat", "KEY_F2");
 	settings->setDefault("keymap_toggle_force_fog_off", "KEY_F3");
+	settings->setDefault("keymap_home", "KEY_KEY_M");
 	settings->setDefault("keymap_toggle_update_camera",
 #if DEBUG
 			"KEY_F4");
@@ -90,6 +91,8 @@ void set_default_settings(Settings *settings)
 	#else
 	settings->setDefault("show_debug", "true");
 	#endif
+ 
+	settings->setDefault("show_homebutton", "true");
 
 	settings->setDefault("fps_max", "60");
 	settings->setDefault("pause_fps_max", "20");

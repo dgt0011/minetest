@@ -2,33 +2,132 @@ package net.minetest.minetest;
 
 import android.app.NativeActivity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.WindowManager;
 import android.net.Uri;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import android.content.res.AssetFileDescriptor;
+
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
+
 public class MtNativeActivity extends NativeActivity {
+
+    TextToSpeech t1;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 		m_MessagReturnCode = -1;
 		m_MessageReturnValue = "";
-
+		makeFullScreen();
+		initSpeech();	
 	}
+	
+	private Locale GetLocale()
+	{	 
+		try
+		{
+			InputStream is = getAssets().open("eidy/minetest.conf");
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+	
+			String line = reader.readLine();
+			while (line != null)
+			{
+			 
+				line = reader.readLine();
+				if (line.startsWith("language=")) 
+				{
+					return new Locale(line.split("=")[1]);
+				}
+				
+			}
+			is.close();
+		}
+		catch (IOException e1)
+		{
+			Log.e("error","Error trying to retrieve language from minetest.conf");
+			e1.printStackTrace();
+		}
+		finally
+		{
+			return Locale.US;
+		}
+	}
+	
+	
+	private void initSpeech()
+	{
+		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+			@Override
+            public void onInit(int status) {
+                
+                if(status == TextToSpeech.SUCCESS){
+                    int result=t1.setLanguage(Locale.US);
+                    if(result==TextToSpeech.LANG_MISSING_DATA ||
+                            result==TextToSpeech.LANG_NOT_SUPPORTED){
+                        Log.e("error", "This Language is not supported");
+                    }
+                   
+                }
+                else
+                    Log.e("error", "Initialisation Failed!");
+            }
+        });
+	
+	}
+	
+	public void speakText(String someText) {
+		if (t1 != null)
+		{
+	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
+		}
+	}	
 
+	 
+	public void makeFullScreen() {
+        if (Build.VERSION.SDK_INT >= 19) {
+            this.getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            makeFullScreen();
+        }
+    }
+ 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
 	}
 
 	public void copyAssets() {
+		
 		Intent intent = new Intent(this, MinetestAssetCopy.class);
 		startActivity(intent);
 	}
 
 	public void showDialog(String acceptButton, String hint, String current,
 			int editType) {
-
+		speakText("Enter some text.");
 		Intent intent = new Intent(this, MinetestTextEntry.class);
 		Bundle params = new Bundle();
 		params.putString("acceptButton", acceptButton);

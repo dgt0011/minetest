@@ -84,6 +84,8 @@ OPENAL_LIB = $(OPENAL_DIR)libs/$(TARGET_ABI)/libopenal.so
 OPENAL_TIMESTAMP = $(OPENAL_DIR)/timestamp
 OPENAL_TIMESTAMP_INT = $(ANDR_ROOT)/deps/openal_timestamp
 OPENAL_URL_GIT = https://github.com/apportable/openal-soft
+# Try using more recent merge of openal
+OPENAL_BRANCH=li-merge
 
 OGG_DIR = $(ANDR_ROOT)/deps/libvorbis-libogg-android/
 OGG_LIB = $(OGG_DIR)libs/$(TARGET_ABI)/libogg.so
@@ -209,7 +211,7 @@ openal_download :
 		echo "openal sources missing, downloading...";                         \
 		mkdir -p ${ANDR_ROOT}/deps;                                            \
 		cd ${ANDR_ROOT}/deps ;                                                 \
-		git clone ${OPENAL_URL_GIT} || exit 1;                                 \
+		git clone -b ${OPENAL_BRANCH} ${OPENAL_URL_GIT} || exit 1;                                 \
 	fi
 
 openal : $(OPENAL_LIB)
@@ -721,6 +723,7 @@ assets : $(ASSETS_TIMESTAMP)
 	$(MAKE) clean_assets;                                                      \
 	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
 	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
+	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
 	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
 	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
 	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
@@ -733,11 +736,13 @@ assets : $(ASSETS_TIMESTAMP)
 	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
 	done; 									   \
 	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
+	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
 	for mod in ${MODS_TO_COPY}; do                                             \
 	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
 	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/eidy;                         \
 	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
+	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
 	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
 	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \

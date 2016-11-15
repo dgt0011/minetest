@@ -3210,6 +3210,19 @@ void Server::SetBrowserAddress(u32 peer_id, const std::string &address)
 	}
 }
 
+void Server::SpeakText(u32 peer_id, const std::string &text)
+{
+	actionstream << "Server::SpeakText address:" << text << std::endl;
+
+	NetworkPacket pkt(TOCLIENT_SPEAK_TEXT, 0, peer_id);
+	pkt << peer_id;
+	pkt << text;
+
+	if (peer_id != PEER_ID_INEXISTENT) {
+		Send(&pkt);
+	}
+}
+
 void Server::deleteParticleSpawnerAll(u32 id)
 {
 	m_env->deleteParticleSpawner(id);

@@ -24,7 +24,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "util/timetaker.h"
 #include "fontengine.h"
 #include "guiscalingfilter.h"
-
+#include "filesys.h"
+#include "log.h"
+#include <exception>
+#include <sstream>
+#include <string>
 typedef enum {
 	LEFT = -1,
 	RIGHT = 1,
@@ -559,34 +563,147 @@ void draw_scene(video::IVideoDriver *driver, scene::ISceneManager *smgr,
 	Text will be removed when the screen is drawn the next time.
 	Additionally, a progressbar can be drawn when percent is set between 0 and 100.
 */
-void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
-		gui::IGUIEnvironment* guienv, float dtime, int percent, bool clouds )
+struct LoadScreenSpriteType
 {
-	video::IVideoDriver* driver    = device->getVideoDriver();
-	v2u32 screensize               = porting::getWindowSize();
+	 
+	u32 x;
+	u32 y;
+	u32 width;
+	u32 height;
+	std::string Filename;
+};
+void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
+	gui::IGUIEnvironment* guienv, float dtime, int percent, bool clouds)
+{
+	video::IVideoDriver* driver = device->getVideoDriver();
+	v2u32 screensize = porting::getWindowSize();
 
 	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
-	v2s32 center(screensize.X / 2, screensize.Y / 2);
+	v2s32 center(screensize.X / 2, screensize.Y - (screensize.Y / 4)); // put the loader on the bottom
 	core::rect<s32> textrect(center - textsize / 2, center + textsize / 2);
 
 	gui::IGUIStaticText *guitext = guienv->addStaticText(
-			text.c_str(), textrect, false, false);
+		text.c_str(), textrect, false, false);
 	guitext->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_UPPERLEFT);
 
 	bool cloud_menu_background = clouds && g_settings->getBool("menu_clouds");
 	if (cloud_menu_background)
 	{
-		g_menuclouds->step(dtime*3);
+		g_menuclouds->step(dtime * 3);
 		g_menuclouds->render();
 		driver->beginScene(true, true, video::SColor(255, 140, 186, 250));
 		g_menucloudsmgr->drawAll();
 	}
 	else
 		driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
+	
+
+	//driver->draw2DImage(slideshowimages, core::position2d<s32>(0, 0),
+	//	core::rect<s32>(0, 0, 898, 540), 0,
+	//	video::SColor(255, 255, 255, 255), true);
+
+
+	// Add label
+	//static bool beenhere = false;
+	//if (!beenhere)
+	//{ 
+	//	guienv->addStaticText(L"hello!",
+	//		core::rect<s32>(0, 0, screensize.X, screensize.Y), true);
+	//	beenhere = true;
+	//}
+
+	// Mouse Fun!!
+	//core::position2d<s32> m = device->getCursorControl()->getPosition();
+	//driver->draw2DRectangle(video::SColor(100, 255, 255, 255),
+	//	core::rect<s32>(m.X - 20, m.Y - 20, m.X + 20, m.Y + 20));
 
 	// draw progress bar
 	if ((percent >= 0) && (percent <= 100))
 	{
+		static u32 start_time = device->getTimer()->getRealTime(); // First Time	 
+		u32 millisecs_since_start = floor((device->getTimer()->getRealTime() - start_time));
+		static u32 last_update = 0;
+		static u32 current_background = 0;
+
+		if (millisecs_since_start > (last_update + 500))
+		{
+			last_update = millisecs_since_start;
+			current_background++;
+		}
+		if (current_background > 19) current_background = 19;
+
+		std::stringstream backgroundss;
+		backgroundss << "background." << current_background << ".png";
+		std::string backgroundfilename = backgroundss.str();
+	  
+		std::string backgroundpath = getTexturePath(backgroundfilename);
+		video::ITexture* slideshowimages = driver->getTexture(backgroundpath.c_str());
+		driver->draw2DImage(slideshowimages,
+			core::rect<s32>(0, 0, screensize.X, screensize.Y),
+			core::rect<s32>(0, 0, 1200, 590),
+			0,
+			0,
+			true);
+
+		infostream << "Background Filename : '" << backgroundfilename << "' Timer : " << millisecs_since_start;
+
+#ifndef __ANDROID__
+		// Bypass
+		if (current_background == 19)
+		{
+			try
+			{ 
+				static bool spriteinit = false;
+				static LoadScreenSpriteType target[1];
+				if (!spriteinit)
+				{
+					target[0].x = 50;
+					target[0].y = screensize.Y - floor(screensize.Y / 3);
+					target[0].height = 256;
+					target[0].width = 256;
+					target[0].Filename = getTexturePath("zebra.png");
+					spriteinit = true;
+				}
+
+				// Render sprites
+				for (int sn = 0; sn < 1; sn++)
+				{
+					video::ITexture* sprites = driver->getTexture(target[0].Filename.c_str());
+					//driver->makeColorKeyTexture(sprites, core::position2d<s32>(0, 0));
+
+					driver->draw2DImage(sprites, core::position2d<s32>(target[0].x, target[0].y),
+						core::rect<s32>(0, 0, target[0].width, target[0].height), 0,
+						video::SColor(255, 255, 255, 255), true);
+
+					//driver->draw2DImage(sprites,
+					//	core::rect<s32>(target[0].x, target[0].y, target[0].width, target[0].height),
+					//	core::rect<s32>(0, 0, 256, 256),
+					//	0,
+					//	video::SColor(255, 255, 255, 255),
+					//	true);
+				}
+
+				// Is the player touching it?
+				core::position2d<s32> mpos = device->getCursorControl()->getPosition();
+				for (int sn = 0; sn < 1; sn++)
+				{
+					if ((mpos.X > target[sn].x && mpos.X < (target[sn].x + target[sn].width)) &&
+						(mpos.Y > target[sn].y && mpos.Y < (target[sn].y + target[sn].height))) 
+					{
+						// Hit!  Move it elsewhere
+						target[sn].x = myrand_range(0, screensize.X - target[sn].width);
+						//target[sn].y = myrand_range(0, screensize.Y - target[sn].height);
+					}
+				}
+
+			}
+			catch (std::exception& e)
+			{			 
+				errorstream << "An exception while executing zebra game code occurred. Exception : " << e.what() << '\n';
+			}
+		}
+#endif 
+		 
 		v2s32 barsize(
 				// 342 is (approximately) 256/0.75 to keep bar on same size as
 				// before with default settings

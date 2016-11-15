@@ -1,4 +1,4 @@
--Minetest
+--Minetest
 --Copyright (C) 2014 sapier
 --
 --This program is free software; you can redistribute it and/or modify
@@ -19,6 +19,8 @@ mt_color_grey  = "#AAAAAA"
 mt_color_blue  = "#0000DD"
 mt_color_green = "#00DD00"
 mt_color_dark_green = "#003300"
+
+local iseidy = true -- dump(core.setting_getbool("eidy_mode"))
 
 --for all other colors ask sfan5 to complete his work!
 
@@ -77,26 +79,42 @@ local function init_globals()
 
 	if PLATFORM == "Android" then
 		local world_list = core.get_worlds()
+		
 		local world_index
+		
+		local found_eid_world = false
+		
+		if iseidy then		
+ 			for i,world in pairs(world_list) do
+ 				if world.name == "eid" then
+ 					found_eid_world = true
+ 					world_index = i
+ 					break
+ 				end
+ 			end		
+ 		end				
 
-		local found_singleplayerworld = false
-		for i, world in ipairs(world_list) do
-			if world.name == "singleplayerworld" then
-				found_singleplayerworld = true
-				world_index = i
-				break
-			end
-		end
-
-		if not found_singleplayerworld then
-			core.create_world("singleplayerworld", 1)
-
-			world_list = core.get_worlds()
-
+		if not iseidy or not found_eid_world then			
+			local found_singleplayerworld = false		
+		
 			for i, world in ipairs(world_list) do
 				if world.name == "singleplayerworld" then
+					found_singleplayerworld = true
 					world_index = i
 					break
+				end
+			end
+
+			if not found_singleplayerworld then
+				core.create_world("singleplayerworld", 1)
+
+				world_list = core.get_worlds()
+
+				for i, world in ipairs(world_list) do
+					if world.name == "singleplayerworld" then
+						world_index = i
+						break
+					end
 				end
 			end
 		end

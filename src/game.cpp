@@ -1217,6 +1217,7 @@ static void show_pause_menu(GUIFormSpecMenu **cur_formspec,
 #endif
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_menu;"
 			<< strgettext("Exit to Menu") << "]";
+#ifndef __ANDROID__
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_os;"
 			<< strgettext("Exit to OS")   << "]"
 			<< "textarea[7.5,0.25;3.9,6.25;;" << control_text << ";]"
@@ -1224,7 +1225,7 @@ static void show_pause_menu(GUIFormSpecMenu **cur_formspec,
 			<< g_build_info << "\n"
 			<< "path_user = " << wrap_rows(porting::path_user, 20)
 			<< "\n;]";
-
+#endif
 	/* Create menu */
 	/* Note: FormspecFormSource and LocalFormspecHandler  *
 	 * are deleted by guiFormSpecMenu                     */
@@ -1355,6 +1356,7 @@ void KeyCache::populate()
 	key[KeyType::SCREENSHOT]   = getKeySetting("keymap_screenshot");
 	key[KeyType::TOGGLE_HUD]   = getKeySetting("keymap_toggle_hud");
 	key[KeyType::TOGGLE_CHAT]  = getKeySetting("keymap_toggle_chat");
+	key[KeyType::HOME] = getKeySetting("keymap_home");
 	key[KeyType::TOGGLE_FORCE_FOG_OFF]
 			= getKeySetting("keymap_toggle_force_fog_off");
 	key[KeyType::TOGGLE_UPDATE_CAMERA]
@@ -2764,12 +2766,12 @@ void Game::processKeyInput(VolatileRunFlags *flags,
 		toggleAutorun(statustext_time);
 	} else if (wasKeyDown(KeyType::INVENTORY)) {
 		openInventory();
-	} else if (wasKeyDown(KeyType::ESC) || input->wasKeyDown(CancelKey)) {
+	} else if (wasKeyDown(KeyType::ESC) || input->wasKeyDown(CancelKey)) { 
 		if (!gui_chat_console->isOpenInhibited()) {
 			show_pause_menu(&current_formspec, client, gamedef,
 				texture_src, device, &input->joystick,
 				simple_singleplayer_mode);
-		}
+		} 
 	} else if (wasKeyDown(KeyType::CHAT)) {
 		openConsole(0.2, L"");
 	} else if (wasKeyDown(KeyType::CMD)) {
@@ -2789,6 +2791,8 @@ void Game::processKeyInput(VolatileRunFlags *flags,
 		toggleCinematic(statustext_time);
 	} else if (wasKeyDown(KeyType::SCREENSHOT)) {
 		client->makeScreenshot(device);
+	}else if (wasKeyDown(KeyType::HOME)) {
+		client->sendChatMessage(L"/home");
 	} else if (wasKeyDown(KeyType::TOGGLE_HUD)) {
 		toggleHud(statustext_time, &flags->show_hud);
 	} else if (wasKeyDown(KeyType::MINIMAP)) {
@@ -3563,6 +3567,25 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 
 #ifdef ANDROID
 			porting::showBrowser(*event.browser_show.address);
+#endif
+
+		} else if (event.type == CE_SPEAK_TEXT) {
+			u32 id = event.speak_text.id;
+
+#ifdef _WIN32
+
+			std::string lang = g_settings->get("language");
+			if (lang == "") lang = "en";
+		 
+			std::string command;
+			// 'espeak -m --path="'..speak.binpath..'" -s 125 -v ' .. LANG ..  '+f5 "' .. stufftosay ..'"' 
+			
+			command = "start espeak --path=\".\" -s 125 -v " + lang + "+f5 \"" + *event.speak_text.text + "\"";
+			system(command.c_str());
+#endif
+
+#ifdef ANDROID
+			porting::speakText(*event.speak_text.text);
 #endif
 
 		}
