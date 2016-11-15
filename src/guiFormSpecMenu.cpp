@@ -2306,28 +2306,26 @@ void GUIFormSpecMenu::drawSelectedItem()
 
 }
 
+std::string addCloseWidgetToFormspec(std::string formspecstring)
+{
+	std::string modifiedFormSpec = formspecstring;
+	size_t sizepos = modifiedFormSpec.find("size[");
+	if (sizepos != std::string::npos)
+	{
+		size_t startpos = sizepos + 5;
+		size_t numchars = 0;
+		for (; modifiedFormSpec.substr(startpos + numchars, 1) != ","; numchars++);
+		std::string widthstr = modifiedFormSpec.substr(startpos, numchars);	 
+		modifiedFormSpec = modifiedFormSpec + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";		
+	}
+
+	return modifiedFormSpec;
+}
 void GUIFormSpecMenu::drawMenu()
 {
 	if(m_form_src){
-
-		std::string formspecstring = m_form_src->getForm();
-		std::string newform = formspecstring;
-
-		size_t sizepos = newform.find("size[");
-		if (sizepos != std::string::npos)
-		{
-			
-			size_t startpos = sizepos + 5;
-			size_t numchars = 0;
-			for (; newform.substr(startpos + numchars, 1) != ","; numchars++);
-			std::string widthstr = newform.substr(startpos, numchars);
-			errorstream << "Size element found! <" << widthstr << ">" << std::endl;
-			newform = newform + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";
-			errorstream << newform << std::endl;
-		}
-	 
- 
-	 
+		std::string newform = addCloseWidgetToFormspec(m_form_src->getForm());
+  
 		if(newform != m_formspec_string){
 			m_formspec_string = newform;
 			regenerateGui(m_screensize_old);
