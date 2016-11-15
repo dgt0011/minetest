@@ -15,13 +15,21 @@ APP_ROOT = $(ANDR_ROOT)/src/main
 GAMES_TO_COPY = eidy
 MODS_TO_COPY =
 
+#VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+#	grep ^set\(VERSION_MAJOR\ | sed 's/)/ /' | cut -f2 -d' ')
+#VERSION_MINOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+#	grep ^set\(VERSION_MINOR\ | sed 's/)/ /' | cut -f2 -d' ')
+#VERSION_PATCH := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+#	grep ^set\(VERSION_PATCH\ | sed 's/)/ /' | cut -f2 -d' ')
 
-VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/android_version.txt | \
 	grep ^set\(VERSION_MAJOR\ | sed 's/)/ /' | cut -f2 -d' ')
-VERSION_MINOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+VERSION_MINOR := $(shell cat $(PROJ_ROOT)/android_version.txt | \
 	grep ^set\(VERSION_MINOR\ | sed 's/)/ /' | cut -f2 -d' ')
-VERSION_PATCH := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
+VERSION_PATCH := $(shell cat $(PROJ_ROOT)/android_version.txt | \
 	grep ^set\(VERSION_PATCH\ | sed 's/)/ /' | cut -f2 -d' ')
+
+
 
 ################################################################################
 # toolchain config for arm new processors
