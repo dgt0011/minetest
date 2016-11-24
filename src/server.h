@@ -268,7 +268,9 @@ public:
 		const std::string &playername);
 
 	void deleteParticleSpawner(const std::string &playername, u32 id);
-
+	
+	void deleteParticleSpawnerAll(u32 id);
+	
 	void SetBrowserAddress(u32 peer_id, const std::string &address);
 	void SpeakText(u32 peer_id, const std::string &text);
 	// Creates or resets inventory
