@@ -611,25 +611,28 @@ void setXorgClassHint(const video::SExposedVideoData &video_data,
 #endif
 }
 
-// [TEMP ROLLBACK]bool setXorgWindowIcon(IrrlichtDevice *device)
-// [TEMP ROLLBACK]{
-// [TEMP ROLLBACK]#if RUN_IN_PLACE
-// [TEMP ROLLBACK]	return setXorgWindowIconFromPath(device,
-// [TEMP ROLLBACK]			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
-// [TEMP ROLLBACK]#else
-// [TEMP ROLLBACK]	// We have semi-support for reading in-place data if we are
-// [TEMP ROLLBACK]	// compiled with RUN_IN_PLACE. Don't break with this and
-// [TEMP ROLLBACK]	// also try the path_share location.
-// [TEMP ROLLBACK]	return
-// [TEMP ROLLBACK]		setXorgWindowIconFromPath(device,
-// [TEMP ROLLBACK]			ICON_DIR "/hicolor/128x128/apps/" PROJECT_NAME ".png") ||
-// [TEMP ROLLBACK]		setXorgWindowIconFromPath(device,
-// [TEMP ROLLBACK]			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
-// [TEMP ROLLBACK]#endif
-// [TEMP ROLLBACK]}
+bool setXorgWindowIcon(IrrlichtDevice *device)
+{
+#ifdef XORG_USED
+#	if RUN_IN_PLACE
+	return setXorgWindowIconFromPath(device,
+			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
+#	else
+	// We have semi-support for reading in-place data if we are
+	// compiled with RUN_IN_PLACE. Don't break with this and
+	// also try the path_share location.
+	return
+		setXorgWindowIconFromPath(device,
+			ICON_DIR "/hicolor/128x128/apps/" PROJECT_NAME ".png") ||
+		setXorgWindowIconFromPath(device,
+			path_share + "/misc/" PROJECT_NAME "-xorg-icon-128.png");
+#	endif
+#else
+	return false;
+#endif
+}
 
-// [TEMP ROLLBACK]bool setXorgWindowIconFromPath(IrrlichtDevice *device,
-bool setXorgWindowIcon(IrrlichtDevice *device,
+bool setXorgWindowIconFromPath(IrrlichtDevice *device,
 	const std::string &icon_file)
 {
 #ifdef XORG_USED
