@@ -213,7 +213,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("freetype", "true");
 	settings->setDefault("font_path", porting::getDataPath("fonts" DIR_DELIM "liberationsans.ttf"));
 	settings->setDefault("font_shadow", "1");
-	settings->setDefault("font_shadow_alpha", "128");
+	settings->setDefault("font_shadow_alpha", "127");
 	settings->setDefault("mono_font_path", porting::getDataPath("fonts" DIR_DELIM "liberationmono.ttf"));
 	settings->setDefault("fallback_font_path", porting::getDataPath("fonts" DIR_DELIM "DroidSansFallbackFull.ttf"));
 
@@ -279,12 +279,16 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("max_simultaneous_block_sends_server_total", "40");
 	settings->setDefault("max_block_send_distance", "9");
 	settings->setDefault("max_block_generate_distance", "7");
+	settings->setDefault("block_send_optimize_distance", "4");
 	settings->setDefault("max_clearobjects_extra_loaded_blocks", "4096");
 	settings->setDefault("time_send_interval", "5");
 	settings->setDefault("time_speed", "72");
 	settings->setDefault("server_unload_unused_data_timeout", "29");
-	settings->setDefault("max_objects_per_block", "49");
+	settings->setDefault("max_objects_per_block", "64");
 	settings->setDefault("server_map_save_interval", "5.3");
+	settings->setDefault("chat_message_max_size", "500");
+	settings->setDefault("chat_message_limit_per_10sec", "8.0");
+	settings->setDefault("chat_message_limit_trigger_kick", "50");
 	settings->setDefault("sqlite_synchronous", "2");
 	settings->setDefault("full_block_send_enable_min_time_from_building", "2.0");
 	settings->setDefault("dedicated_server_step", "0.1");
@@ -298,7 +302,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("emergequeue_limit_diskonly", "32");
 	settings->setDefault("emergequeue_limit_generate", "32");
 	settings->setDefault("num_emerge_threads", "1");
-	settings->setDefault("secure.enable_security", "false");
+	settings->setDefault("secure.enable_security", "true");
 	settings->setDefault("secure.trusted_mods", "");
 	settings->setDefault("secure.http_mods", "");
 

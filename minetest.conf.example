@@ -173,6 +173,11 @@
 #    type: key
 # keymap_noclip = KEY_KEY_H
 
+#    Key for toggling autorun.
+#    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
+#    type: key
+# keymap_autorun =
+
 #    Key for toggling cinematic mode.
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 #    type: key
@@ -208,7 +213,7 @@
 #    type: key
 # keymap_toggle_force_fog_off = KEY_F3
 
-#    Key for toggling the camrea update. Only used for development
+#    Key for toggling the camera update. Only used for development
 #    See http://irrlicht.sourceforge.net/docu/namespaceirr.html#a54da2a0e231901735e3da1b0edf72eb3
 #    type: key
 # keymap_toggle_update_camera =
@@ -369,7 +374,7 @@
 
 #### Shaders
 
-#    Shaders allow advanced visul effects and may increase performance on some video cards.
+#    Shaders allow advanced visual effects and may increase performance on some video cards.
 #    Thy only work with the OpenGL video backend.
 #    type: bool
 # enable_shaders = true
@@ -633,7 +638,7 @@
 #    When gui_scaling_filter_txr2img is true, copy those images
 #    from hardware to software for scaling.  When false, fall back
 #    to the old scaling method, for video drivers that don't
-#    propery support downloading textures back from hardware.
+#    properly support downloading textures back from hardware.
 #    type: bool
 # gui_scaling_filter_txr2img = true
 
@@ -650,7 +655,7 @@
 # font_path = fonts/liberationsans.ttf
 
 #    type: int
-# font_size = 15
+# font_size = 16
 
 #    Font shadow offset, if 0 then shadow will not be drawn.
 #    type: int
@@ -658,7 +663,7 @@
 
 #    Font shadow alpha (opaqueness, between 0 and 255).
 #    type: int min: 0 max: 255
-# font_shadow_alpha = 128
+# font_shadow_alpha = 127
 
 #    type: path
 # mono_font_path = fonts/liberationmono.ttf
@@ -789,11 +794,11 @@
 
 ### Advanced
 
-#    How many blocks are flying in the wire simultaneously per client.
+#    Maximum number of blocks that are simultaneously sent per client.
 #    type: int
 # max_simultaneous_block_sends_per_client = 10
 
-#    How many blocks are flying in the wire simultaneously for the whole server.
+#    Maximum number of blocks that are simultaneously sent in total.
 #    type: int
 # max_simultaneous_block_sends_server_total = 40
 
@@ -928,6 +933,26 @@
 #    type: float
 # server_map_save_interval = 5.3
 
+#    Set the maximum character length of a chat message sent by clients. (0 to disable)
+#    type: integer
+# chat_message_max_size = 500
+
+#    Limit a single player to send X messages per 10 seconds. (0 to disable)
+#    type: float
+# chat_message_limit_per_10sec = 8.0
+
+#    Kick player if send more than X messages per 10 seconds. (0 to disable)
+#    type: integer
+# chat_message_limit_trigger_kick = 50
+
+#    At this distance the server will aggressively optimize which blocks are sent to clients.
+#    Small values potentially improve performance a lot, at the expense of visible rendering glitches.
+#    (some blocks will not be rendered under water and in caves, as well as sometimes on land)
+#    Setting this to a value greater than max_block_send_distance disables this optimization.
+#    Stated in mapblocks (16 nodes)
+#    type: int
+# block_send_optimize_distance = 4
+
 ### Physics
 
 #    type: float
@@ -991,7 +1016,7 @@
 
 #    Maximum number of statically stored objects in a block.
 #    type: int
-# max_objects_per_block = 49
+# max_objects_per_block = 64
 
 #    See http://www.sqlite.org/pragma.html#pragma_synchronous
 #    type: enum values: 0, 1, 2
@@ -1094,6 +1119,25 @@
 #    type: int
 # num_emerge_threads = 1
 
+#### Noise parameters and formats
+
+#    Noise parameters can be specified as a set of positional values, for example:
+#    Offset, scale, (spread factors), seed offset, number of octaves, persistence, lacunarity
+# mgv6_np_terrain_base = -4, 20, (250, 250, 250), 82341, 5, 0.6, 2.0
+#    Or the group format can be used instead, for example:
+# mgv6_np_terrain_base = {
+#    offset      = -4,
+#    scale       = 20,
+#    spread      = (250, 250, 250),
+#    seed        = 82341,
+#    octaves     = 5,
+#    persistence = 0.6,
+#    lacunarity  = 2.0,
+#    flags       = "defaults"
+# }
+#    Only the group format supports noise flags which are needed for eased noise.
+#    Mgv5 uses eased noise for np_ground so this is shown in group format below.
+
 #    Noise parameters for biome API temperature, humidity and biome blend.
 #    type: noise_params
 # mg_biome_np_heat = 50, 50, (750, 750, 750), 5349, 3, 0.5, 2.0
@@ -1127,6 +1171,20 @@
 
 #    type: noise_params
 # mgv5_np_cave2 = 0, 12, (50, 50, 50), 10325, 4, 0.5, 2.0
+
+#    Noise parameters in group format, unsupported by advanced settings
+#    menu but settable in minetest.conf.
+#    See documentation of noise parameter formats above.
+# mgv5_np_ground = {
+#    offset      = 0,
+#    scale       = 40,
+#    spread      = (80, 80, 80),
+#    seed        = 983240,
+#    octaves     = 4,
+#    persistence = 0.55,
+#    lacunarity  = 2.0,
+#    flags       = "eased"
+# }
 
 #### Mapgen v6
 
@@ -1181,15 +1239,34 @@
 #### Mapgen v7
 
 #    Map generation attributes specific to Mapgen v7.
-#    The 'ridges' flag controls the rivers.
+#    The 'ridges' flag enables the rivers.
+#    Floatlands are currently experimental and subject to change.
 #    Flags that are not specified in the flag string are not modified from the default.
 #    Flags starting with 'no' are used to explicitly disable them.
-#    type: flags possible values: mountains, ridges, nomountains, noridges
+#    type: flags possible values: mountains, ridges, floatlands,
+#    nomountains, noridges, nofloatlands
 # mgv7_spflags = mountains,ridges
 
 #    Controls width of tunnels, a smaller value creates wider tunnels.
 #    type: float
 # mgv7_cave_width = 0.2
+
+#    Controls the density of floatland mountain terrain.
+#    Is an offset added to the 'np_mountain' noise value.
+#    type: float
+# mgv7_float_mount_density = 0.6
+
+#    Typical maximum height, above and below midpoint, of floatland mountain terrain.
+#    type: float
+# mgv7_float_mount_height = 128.0
+
+#    Y-level of floatland midpoint and lake surface.
+#    type: int
+# mgv7_floatland_level = 1280
+
+#    Y-level to which floatland shadows extend.
+#    type: int
+# mgv7_shadow_limit = 1024
 
 #    type: noise_params
 # mgv7_np_terrain_base = 4, 70, (600, 600, 600), 82341, 5, 0.6, 2.0
@@ -1211,6 +1288,12 @@
 
 #    type: noise_params
 # mgv7_np_ridge_uwater = 0, 1, (1000, 1000, 1000), 85039, 5, 0.6, 2.0
+
+#    type: noise_params
+# mgv7_np_floatland_base = -0.6, 1.5, (600, 600, 600), 114, 5, 0.6, 2.0
+
+#    type: noise_params
+# mgv7_np_float_base_height = 48, 24, (300, 300, 300), 907, 4, 0.7, 2.0
 
 #    type: noise_params
 # mgv7_np_mountain = -0.6, 1, (250, 350, 250), 5333, 5, 0.63, 2.0
@@ -1457,14 +1540,14 @@
 
 #    Prevent mods from doing insecure things like running shell commands.
 #    type: bool
-# secure.enable_security = false
+# secure.enable_security = true
 
 #    Comma-separated list of trusted mods that are allowed to access insecure
 #    functions even when mod security is on (via request_insecure_environment()).
 #    type: string
 # secure.trusted_mods =
 
-#    Comma-seperated list of mods that are allowed to access HTTP APIs, which
+#    Comma-separated list of mods that are allowed to access HTTP APIs, which
 #    allow them to upload and download data to/from the internet.
 #    type: string
 # secure.http_mods =
@@ -1538,7 +1621,7 @@
 
 #    Set the language. Leave empty to use the system language.
 #    A restart is required after changing this.
-#    type: enum values: , be, cs, da, de, eo, es, et, fr, hu, id, it, ja, jbo, ko, ky, lt, nb, nl, pl, pt, pt_BR, ro, ru, tr, uk, zh_CN, zh_TW
+#    type: enum values: , be, ca, cs, da, de, en, eo, es, et, fr, he, hu, id, it, ja, jbo, ko, ky, lt, nb, nl, pl, pt, pt_BR, ro, ru, sr_Cyrl, tr, uk, zh_CN, zh_TW
 # language =
 
 #    Level of logging to be written to debug.txt:

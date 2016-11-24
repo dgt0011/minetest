@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 project(minetest)
 
 INCLUDE(CheckIncludeFiles)
+INCLUDE(CheckLibraryExists)
 
 # Add custom SemiDebug build mode
 set(CMAKE_CXX_FLAGS_SEMIDEBUG "-O1 -g -Wall -Wabi" CACHE STRING
@@ -292,9 +293,10 @@ if(WIN32)
 	set(ZLIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../../zlib/zlib-1.2.5"
 			CACHE PATH "Zlib include directory")
 	set(ZLIB_LIBRARIES "${PROJECT_SOURCE_DIR}/../../zlib125dll/dll32/zlibwapi.lib"
-			CACHE FILEPATH "Path to zlibwapi.lib")
+			CACHE FILEPATH "Path to zlib library (usually zlibwapi.lib)")
 	set(ZLIB_DLL "${PROJECT_SOURCE_DIR}/../../zlib125dll/dll32/zlibwapi.dll"
-			CACHE FILEPATH "Path to zlibwapi.dll (for installation)")
+			CACHE FILEPATH "Path to zlib DLL (for installation)")
+	set(ZLIBWAPI_DLL "" CACHE FILEPATH "Path to zlibwapi DLL")
 	set(IRRLICHT_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../../irrlicht-1.7.2"
 			CACHE PATH "irrlicht dir")
 	if(USE_FREETYPE)
@@ -443,6 +445,7 @@ set(common_SRCS
 	porting.cpp
 	profiler.cpp
 	quicktune.cpp
+	remoteplayer.cpp
 	rollback.cpp
 	rollback_interface.cpp
 	serialization.cpp
@@ -471,6 +474,7 @@ set(common_SRCS
 # This gives us the icon and file version information
 if(WIN32)
 	set(WINRESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../misc/winresource.rc")
+	set(MINETEST_EXE_MANIFEST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../misc/minetest.exe.manifest")
 	if(MINGW)
 		if(NOT CMAKE_RC_COMPILER)
 			set(CMAKE_RC_COMPILER "windres.exe")
@@ -483,7 +487,7 @@ if(WIN32)
 			DEPENDS ${WINRESOURCE_FILE})
 		SET(common_SRCS ${common_SRCS} ${CMAKE_CURRENT_BINARY_DIR}/winresource_rc.o)
 	else(MINGW) # Probably MSVC
-		set(common_SRCS ${common_SRCS} ${WINRESOURCE_FILE})
+		set(common_SRCS ${common_SRCS} ${WINRESOURCE_FILE} ${MINETEST_EXE_MANIFEST_FILE})
 	endif(MINGW)
 endif()
 
@@ -536,6 +540,7 @@ set(client_SRCS
 	sky.cpp
 	wieldmesh.cpp
 	${client_SCRIPT_SRCS}
+	${UNITTEST_CLIENT_SRCS}
 )
 list(SORT client_SRCS)
 
@@ -692,9 +697,9 @@ if(MSVC)
 	# Visual Studio
 
 	# EHa enables SEH exceptions (used for catching segfaults)
-	set(CMAKE_CXX_FLAGS_RELEASE "/EHa /Ox /Ob2 /Oi /Ot /Oy /GL /FD /MT /GS- /arch:SSE /fp:fast /D NDEBUG /D _HAS_ITERATOR_DEBUGGING=0 /TP")
+	set(CMAKE_CXX_FLAGS_RELEASE "/EHa /Ox /GL /FD /MT /GS- /Zi /arch:SSE /fp:fast /D NDEBUG /D _HAS_ITERATOR_DEBUGGING=0 /TP")
 	#set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/LTCG /NODEFAULTLIB:\"libcmtd.lib\" /NODEFAULTLIB:\"libcmt.lib\"")
-	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/LTCG")
+	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/LTCG /DEBUG /OPT:REF /OPT:ICF")
 
 	set(CMAKE_CXX_FLAGS_SEMIDEBUG "/MDd /Zi /Ob0 /O1 /RTC1")
 
@@ -722,8 +727,14 @@ else()
 		set(OTHER_FLAGS "${OTHER_FLAGS} -Wsign-compare")
 	endif()
 
+	if(WIN32 AND NOT ZLIBWAPI_DLL AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+		set(OTHER_FLAGS "${OTHER_FLAGS} -DWIN32_NO_ZLIB_WINAPI")
+		message(WARNING "Defaulting to cdecl for zlib on win32 because ZLIBWAPI_DLL"
+			" isn't set, ensure that ZLIBWAPI_DLL is set if you want stdcall.")
+	endif()
+
 	if(MINGW)
-		set(OTHER_FLAGS "-mthreads -fexceptions")
+		set(OTHER_FLAGS "${OTHER_FLAGS} -mthreads -fexceptions")
 	endif()
 
 	set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${RELEASE_WARNING_FLAGS} ${WARNING_FLAGS} ${OTHER_FLAGS} -ffast-math -Wall -pipe -funroll-loops")

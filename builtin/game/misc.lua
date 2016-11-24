@@ -38,7 +38,7 @@ core.register_globalstep(function(dtime)
 end)
 
 function core.after(after, func, ...)
-	assert(tonumber(time) and type(func) == "function",
+	assert(tonumber(after) and type(func) == "function",
 			"Invalid core.after invocation")
 	jobs[#jobs + 1] = {
 		func = func,
@@ -237,5 +237,9 @@ else
 		return core.get_color_escape_sequence(color) .. message .. core.get_color_escape_sequence("#ffffff")
 	end
 
+end
+
+function core.close_formspec(player_name, formname)
+	return minetest.show_formspec(player_name, formname, "")
 end
 
