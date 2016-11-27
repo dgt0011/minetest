@@ -114,7 +114,6 @@ bool ClientLauncher::run(GameParams &game_params, const Settings &cmd_args)
 
 	porting::setXorgClassHint(video_driver->getExposedVideoData(), PROJECT_NAME_C);
 
-	// [TEMP ROLLBACK] porting::setXorgWindowIcon(device);
 	porting::setXorgWindowIcon(device,
  		porting::path_share + "/misc/minetest-xorg-icon-128.png");
 
