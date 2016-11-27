@@ -367,8 +367,8 @@ inline const char *getPlatformName()
 void setXorgClassHint(const video::SExposedVideoData &video_data,
 	const std::string &name);
 
-bool setXorgWindowIcon(IrrlichtDevice *device,
-	const std::string &icon_file);
+bool setXorgWindowIcon(irr::IrrlichtDevice *device, const std::string &icon_file);
+	
 
 // This only needs to be called at the start of execution, since all future
 // threads in the process inherit this exception handler
