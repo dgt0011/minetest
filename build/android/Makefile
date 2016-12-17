@@ -745,6 +745,7 @@ assets : $(ASSETS_TIMESTAMP)
 	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
 	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
+	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/eidy;					\
 	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
 	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/eidy/media;     \
 	cd ${APP_ROOT}/assets ||  exit 1;                                          \
