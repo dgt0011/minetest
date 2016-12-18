@@ -2380,7 +2380,8 @@ std::string addCloseWidgetToFormspec(std::string formspecstring)
 		size_t numchars = 0;
 		for (; modifiedFormSpec.substr(startpos + numchars, 1) != ","; numchars++);
 		std::string widthstr = modifiedFormSpec.substr(startpos, numchars);	 
-		modifiedFormSpec = modifiedFormSpec + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";		
+		//modifiedFormSpec = modifiedFormSpec + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.5) + ",0;0.6,0.35;jeija_close_window.png;;]";
+		modifiedFormSpec = modifiedFormSpec + "image_button_exit[" + std::to_string(stof(widthstr.c_str()) - 0.36) + ",-0.32;0.7,0.65;jeija_close_window.png;;]";		
 	}
 
 	return modifiedFormSpec;
