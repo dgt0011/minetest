@@ -157,7 +157,7 @@ std::string getTexturePath(const std::string &filename)
  
 		if (fullpath == "")
 		{
-			fullpath = porting::getAssetPath("textures"	+ DIR_DELIM + "base" + DIR_DELIM + "pack" + filename);
+			fullpath = porting::getAsset("textures" + DIR_DELIM + "base" + DIR_DELIM + "pack" + DIR_DELIM + filename);
 		}
 
 //#ifdef __ANDROID__

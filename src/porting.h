@@ -163,6 +163,12 @@ extern std::string path_cache;
 std::string getDataPath(const char *subpath);
 
 /*
+Attempt to get an embedded asset, then copy it to the file system, returning the path.
+ 
+*/
+std::string getAsset(const std::string &assetPath);
+
+/*
 	Move cache folder from path_user to the
 	system cache location if possible.
 */

@@ -157,7 +157,7 @@ std::string getAsset(const std::string &assetPath)
 		// Manage disk file
 		std::string base_path = porting::path_share + DIR_DELIM + assetPath;
 		std::string testpath = base_path + DIR_DELIM + assetPath;
-
+		 
 #ifdef __ANDROID__
 		
 		// Construct Asset String
