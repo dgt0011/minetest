@@ -756,7 +756,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L eidy > filelist.txt;                                             \
+	find -L eidy | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
@@ -780,7 +780,7 @@ apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB)
 	fi;                                                                        \
 	export VERSION_STR="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" && \
 	export BUILD_TYPE_C=$$(echo "$${BUILD_TYPE}" | sed 's/./\U&/') &&          \
-	gradle --debug --stacktrace assemble$$BUILD_TYPE_C &&                                           \
+	gradle assemble$$BUILD_TYPE_C &&                                           \
 	echo "Version: $${VERSION_STR}"	&&											\
 	echo "APK stored at: build/outputs/apk/eidy-$$BUILD_TYPE.apk" &&       \
 	echo "You can install it with \`make install_$$BUILD_TYPE\`"
