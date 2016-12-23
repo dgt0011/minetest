@@ -179,7 +179,7 @@ std::string getTexturePath(const std::string &filename)
 					<< testpath << std::endl;
 				char buf[BUFSIZ];
 				int nb_read = 0;
-				FILE* out = fopen(testpath.str(), "w");
+				FILE* out = fopen(testpath.c_str(), "w");
 				while ((nb_read = AAsset_read(asset, buf, BUFSIZ)) > 0)
 					fwrite(buf, nb_read, 1, out);
 				fclose(out);
