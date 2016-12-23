@@ -40,7 +40,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #ifdef __ANDROID__
 #include <GLES/gl.h>
-#include <android/asset_manager.h> 
+//#include <android/asset_manager.h> 
 #endif
 
 /*
@@ -155,41 +155,46 @@ std::string getTexturePath(const std::string &filename)
 		// Check all filename extensions. Returns "" if not found.
 		fullpath = getImagePath(testpath);
  
-#ifdef __ANDROID__
-
 		if (fullpath == "")
 		{
-			infostream << "getTexturePath:: Can't find local file. Attempting Asset Extraction - "
-				<< filename << std::endl;
-
-			// Construct Asset String
-			std::string asset_path = "eidy/textures/base/pack/" + filename;
-			// Get
-			AAssetManager* mgr = porting::app_global->activity->assetManager;
-
-			AAsset* asset = AAssetManager_open(mgr, asset_path.c_str(), AASSET_MODE_STREAMING);
-			if (asset == NULL)
-			{
-				infostream << "getTexturePath:: Could not find asset - "
-					<< asset_path << std::endl;
-			}
-			else
-			{
-				infostream << "getTexturePath:: Asset found, copying to - "
-					<< testpath << std::endl;
-				char buf[BUFSIZ];
-				int nb_read = 0;
-				FILE* out = fopen(testpath.c_str(), "w");
-				while ((nb_read = AAsset_read(asset, buf, BUFSIZ)) > 0)
-					fwrite(buf, nb_read, 1, out);
-				fclose(out);
-				AAsset_close(asset);
-
-				// Check all filename extensions. Returns "" if not found.
-				fullpath = getImagePath(testpath);
-			}
+			fullpath = porting::getAssetPath("textures"	+ DIR_DELIM + "base" + DIR_DELIM + "pack" + filename);
 		}
-#endif // __ANDROID__
+
+//#ifdef __ANDROID__
+//
+//		if (fullpath == "")
+//		{
+//			infostream << "getTexturePath:: Can't find local file. Attempting Asset Extraction - "
+//				<< filename << std::endl;
+//
+//			// Construct Asset String
+//			std::string asset_path = "eidy/textures/base/pack/" + filename;
+//			// Get
+//			AAssetManager* mgr = porting::app_global->activity->assetManager;
+//
+//			AAsset* asset = AAssetManager_open(mgr, asset_path.c_str(), AASSET_MODE_STREAMING);
+//			if (asset == NULL)
+//			{
+//				infostream << "getTexturePath:: Could not find asset - "
+//					<< asset_path << std::endl;
+//			}
+//			else
+//			{
+//				infostream << "getTexturePath:: Asset found, copying to - "
+//					<< testpath << std::endl;
+//				char buf[BUFSIZ];
+//				int nb_read = 0;
+//				FILE* out = fopen(testpath.c_str(), "w");
+//				while ((nb_read = AAsset_read(asset, buf, BUFSIZ)) > 0)
+//					fwrite(buf, nb_read, 1, out);
+//				fclose(out);
+//				AAsset_close(asset);
+//
+//				// Check all filename extensions. Returns "" if not found.
+//				fullpath = getImagePath(testpath);
+//			}
+//		}
+//#endif // __ANDROID__
 	}
 
 	// Add to cache (also an empty result is cached)

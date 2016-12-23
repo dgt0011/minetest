@@ -58,6 +58,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "settings.h"
 #include <list>
 
+#ifdef __ANDROID__
+#include <android/asset_manager.h> 
+#endif
+
+
 namespace porting
 {
 
@@ -147,6 +152,44 @@ std::string path_user = "..";
 std::string path_locale = path_share + DIR_DELIM + "locale";
 std::string path_cache = path_user + DIR_DELIM + "cache";
 
+std::string getAsset(const std::string &assetPath)
+{
+		// Manage disk file
+		std::string base_path = porting::path_share + DIR_DELIM + assetPath;
+		std::string testpath = base_path + DIR_DELIM + assetPath;
+
+#ifdef __ANDROID__
+		
+		// Construct Asset String
+		std::string asset_path = "eidy/" + assetPath;
+		
+		// Get
+		AAssetManager* mgr = porting::app_global->activity->assetManager;
+
+		AAsset* asset = AAssetManager_open(mgr, asset_path.c_str(), AASSET_MODE_STREAMING);
+		if (asset == NULL)
+		{
+			infostream << "getTexturePath:: Could not find asset - "
+				<< asset_path << std::endl;
+			return "";
+		}
+		else
+		{
+			infostream << "getTexturePath:: Asset found, copying to - "
+				<< testpath << std::endl;
+			char buf[BUFSIZ];
+			int nb_read = 0;
+			FILE* out = fopen(testpath.c_str(), "w");
+			while ((nb_read = AAsset_read(asset, buf, BUFSIZ)) > 0)
+				fwrite(buf, nb_read, 1, out);
+			fclose(out);
+			AAsset_close(asset);
+			return testpath;
+		}
+#else
+		return testpath;
+#endif  
+}
 
 std::string getDataPath(const char *subpath)
 {
