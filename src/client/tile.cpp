@@ -165,9 +165,9 @@ std::string getTexturePath(const std::string &filename)
 			// Construct Asset String
 			std::string asset_path = "eidy/textures/base/pack/" + filename;
 			// Get
-			AAssetManager* mgr = porting::app_global->state->activity->assetManager;
+			AAssetManager* mgr = porting::app_global->activity->assetManager;
 
-			AAsset* asset = AAssetManager_open(mgr, asset_path, AASSET_MODE_STREAMING);
+			AAsset* asset = AAssetManager_open(mgr, asset_path.c_str(), AASSET_MODE_STREAMING);
 			if (asset == NULL)
 			{
 				infostream << "getTexturePath:: Could not find asset - "
