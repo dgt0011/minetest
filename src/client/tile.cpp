@@ -165,7 +165,7 @@ std::string getTexturePath(const std::string &filename)
 			// Construct Asset String
 			std::string asset_path = "eidy/textures/base/pack/" + filename;
 			// Get
-			AAssetManager* mgr = app_global->state->activity->assetManager;
+			AAssetManager* mgr = porting::app_global->state->activity->assetManager;
 
 			AAsset* asset = AAssetManager_open(mgr, asset_path, AASSET_MODE_STREAMING);
 			if (asset == NULL)
@@ -179,7 +179,7 @@ std::string getTexturePath(const std::string &filename)
 					<< testpath << std::endl;
 				char buf[BUFSIZ];
 				int nb_read = 0;
-				FILE* out = fopen(testpath, "w");
+				FILE* out = fopen(testpath.str(), "w");
 				while ((nb_read = AAsset_read(asset, buf, BUFSIZ)) > 0)
 					fwrite(buf, nb_read, 1, out);
 				fclose(out);
