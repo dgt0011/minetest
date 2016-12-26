@@ -633,18 +633,20 @@ void draw_load_screen(const std::wstring &text, IrrlichtDevice* device,
 		if (current_background > 19) current_background = 19;
 
 		std::stringstream backgroundss;
-		backgroundss << "background." << current_background << ".png";
+		backgroundss << "load." << current_background << ".png";
 		std::string backgroundfilename = backgroundss.str();
 	  
 		std::string backgroundpath = getTexturePath(backgroundfilename);
-		video::ITexture* slideshowimages = driver->getTexture(backgroundpath.c_str());
-		driver->draw2DImage(slideshowimages,
-			core::rect<s32>(0, 0, screensize.X, screensize.Y),
-			core::rect<s32>(0, 0, 1200, 590),
-			0,
-			0,
-			true);
-
+		if (backgroundpath != "")
+		{
+			video::ITexture* slideshowimages = driver->getTexture(backgroundpath.c_str());
+			driver->draw2DImage(slideshowimages,
+				core::rect<s32>(0, 0, screensize.X, screensize.Y),
+				core::rect<s32>(0, 0, 1200, 590),
+				0,
+				0,
+				true);
+		}
 		infostream << "Background Filename : '" << backgroundfilename << "' Timer : " << millisecs_since_start;
 
 #ifndef __ANDROID__
