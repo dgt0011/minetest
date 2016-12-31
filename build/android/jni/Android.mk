@@ -365,7 +365,7 @@ LOCAL_SRC_FILES += \
 LOCAL_SRC_FILES += jni/src/jsoncpp/json/jsoncpp.cpp
 
 LOCAL_SHARED_LIBRARIES := iconv openal ogg vorbis gmp
-LOCAL_STATIC_LIBRARIES := Irrlicht freetype curl ssl crypto android_native_app_glue $(PROFILER_LIBS)
+LOCAL_STATIC_LIBRARIES := Irrlicht freetype libintl curl ssl crypto android_native_app_glue $(PROFILER_LIBS)
 
 ifeq ($(HAVE_LEVELDB), 1)
 	LOCAL_STATIC_LIBRARIES += LevelDB
