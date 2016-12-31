@@ -25,6 +25,11 @@ LOCAL_SRC_FILES := deps/freetype2-android/Android/obj/local/$(TARGET_ARCH_ABI)/l
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE := libintl
+LOCAL_SRC_FILES := deps/libintl-lite/Android/obj/local/$(TARGET_ARCH_ABI)/libintl.a
+include $(PREBUILT_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := iconv
 LOCAL_SRC_FILES := deps/libiconv/lib/.libs/libiconv.so
 include $(PREBUILT_SHARED_LIBRARY)
@@ -72,6 +77,7 @@ LOCAL_CFLAGS := -D_IRR_ANDROID_PLATFORM_      \
 		-DHAVE_TOUCHSCREENGUI         \
 		-DUSE_CURL=1                  \
 		-DUSE_SOUND=1                 \
+		-DUSE_GETTEXT=1                 \
 		-DUSE_FREETYPE=1              \
 		-DUSE_LEVELDB=$(HAVE_LEVELDB) \
 		$(GPROF_DEF)                  \
@@ -101,6 +107,7 @@ LOCAL_C_INCLUDES := \
 		jni/src/lua/src                           \
 		jni/src/jsoncpp                           \
 		jni/src/cguittfont                        \
+		deps/libintl-lite                         \
 		deps/irrlicht/include                     \
 		deps/libiconv/include                     \
 		deps/freetype2-android/include            \
