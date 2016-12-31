@@ -223,7 +223,7 @@ void init_gettext(const char *path, const std::string &configured_language,
 
 #if defined(_WIN32)
 	// Set character encoding for Win32
-	char *tdomain = textdomain( (char *) NULL );
+	const char *tdomain = textdomain( (char *) NULL );
 	if( tdomain == NULL )
 	{
 		errorstream << "Warning: domainname parameter is the null pointer" <<
