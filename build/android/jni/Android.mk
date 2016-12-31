@@ -26,7 +26,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintl
-LOCAL_SRC_FILES := deps/libintl-lite/Android/obj/local/$(TARGET_ARCH_ABI)/libintl.a
+LOCAL_SRC_FILES := deps/libintl-lite/obj/local/$(TARGET_ARCH_ABI)/libintl.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
