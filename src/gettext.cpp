@@ -126,7 +126,9 @@ void init_gettext(const char *path, const std::string &configured_language,
 #ifndef _WIN32
 		// Add user specified locale to environment
 		setenv("LANGUAGE", configured_language.c_str(), 1);
-
+		// See if the language is set
+		const char *env_lang = getenv("LANGUAGE");
+		errorstream << "LANGUAGE env has been set to '" << env_lang << "'" << std::endl;
 		// Reload locale with changed environment
 		setlocale(LC_ALL, "");
 #elif defined(_MSC_VER)
