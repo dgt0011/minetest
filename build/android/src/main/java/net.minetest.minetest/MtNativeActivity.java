@@ -51,7 +51,7 @@ public class MtNativeActivity extends NativeActivity {
 				line = reader.readLine();
 				if (line.startsWith("language=")) 
 				{
-					return new Locale(line.split("=")[1]);
+					return new Locale(line.split("=")[1].trim());
 				}
 				
 			}
@@ -76,7 +76,7 @@ public class MtNativeActivity extends NativeActivity {
             public void onInit(int status) {
                 
                 if(status == TextToSpeech.SUCCESS){
-                    int result=t1.setLanguage(Locale.US);
+                    int result=t1.setLanguage(GetLocale());
                     if(result==TextToSpeech.LANG_MISSING_DATA ||
                             result==TextToSpeech.LANG_NOT_SUPPORTED){
                         Log.e("error", "This Language is not supported");
