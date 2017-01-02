@@ -126,9 +126,7 @@ void init_gettext(const char *path, const std::string &configured_language,
 #ifndef _WIN32
 		// Add user specified locale to environment
 		setenv("LANGUAGE", configured_language.c_str(), 1);
-		// See if the language is set
-		const char *env_lang = getenv("LANGUAGE");
-		errorstream << "LANGUAGE env has been set to '" << env_lang << "'" << std::endl;
+ 
 		// Reload locale with changed environment
 		setlocale(LC_ALL, "");
 #elif defined(_MSC_VER)
@@ -220,7 +218,11 @@ void init_gettext(const char *path, const std::string &configured_language,
 #endif
 
 	static std::string name = lowercase(PROJECT_NAME);
-	bindtextdomain(name.c_str(), path);
+	if (!bindtextdomain(name.c_str(), path))
+	{
+		errorstream << "Error : Failed to bind text Domain : " << name << " with path :" << path << std::endl;
+	}
+	errorstream << "Information : Setting Text Domain : " << name << " with path :" << path << std::endl;
 	textdomain(name.c_str());
 
 #if defined(_WIN32)
