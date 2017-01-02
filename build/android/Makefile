@@ -734,7 +734,7 @@ clean_sqlite3:
 
 $(ASSETS_TIMESTAMP) : $(IRRLICHT_LIB)
 	@mkdir -p ${ANDR_ROOT}/deps;                                                \
-	for DIRNAME in {builtin,client,doc,fonts,games,mods,po,textures}; do        \
+	for DIRNAME in {builtin,client,doc,fonts,games,mods,locale,textures}; do        \
 		LAST_MODIF=$$(find ${PROJ_ROOT}/${DIRNAME} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 		if [ $$(basename $$LAST_MODIF) != "timestamp" ]; then               \
 			touch ${PROJ_ROOT}/${DIRNAME}/timestamp;                   \
@@ -791,7 +791,7 @@ assets : $(ASSETS_TIMESTAMP)
 	for mod in ${MODS_TO_COPY}; do                                             \
 	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/eidy;                         \
+	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/eidy;                         \
 	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
