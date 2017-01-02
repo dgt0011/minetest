@@ -127,7 +127,7 @@ public class MtNativeActivity extends NativeActivity {
 
 	public void showDialog(String acceptButton, String hint, String current,
 			int editType) {
-		speakText("Enter some text.");
+	 
 		Intent intent = new Intent(this, MinetestTextEntry.class);
 		Bundle params = new Bundle();
 		params.putString("acceptButton", acceptButton);
