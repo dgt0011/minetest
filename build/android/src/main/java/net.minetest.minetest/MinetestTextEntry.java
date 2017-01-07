@@ -41,6 +41,7 @@ public class MinetestTextEntry extends Activity {
 		}
 		else {
 			mTextInputWidget.setInputType(InputType.TYPE_CLASS_TEXT);
+			
 		}
 		
 		
@@ -73,6 +74,8 @@ public class MinetestTextEntry extends Activity {
 		
 		mTextInputDialog = builder.create();
 		mTextInputDialog.show();
+		// request keyboard   
+		mTextInputDialog.getWindow().setSoftInputMode (WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
 	}
 	
 	public void pushResult(String text) {
