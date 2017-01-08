@@ -12,7 +12,7 @@ ANDR_ROOT = $(shell pwd)
 PROJ_ROOT = $(shell realpath $(ANDR_ROOT)/../..)
 APP_ROOT = $(ANDR_ROOT)/src/main
 
-GAMES_TO_COPY = minetest_game
+GAMES_TO_COPY = eidy
 MODS_TO_COPY =
 
 
