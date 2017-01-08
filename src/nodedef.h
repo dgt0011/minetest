@@ -34,6 +34,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "itemgroup.h"
 #include "sound.h" // SimpleSoundSpec
 #include "constants.h" // BS
+#include "tileanimation.h"
 
 class INodeDefManager;
 class IItemDefManager;
@@ -161,22 +162,14 @@ enum NodeDrawType
 /*
 	Stand-alone definition of a TileSpec (basically a server-side TileSpec)
 */
-enum TileAnimationType{
-	TAT_NONE=0,
-	TAT_VERTICAL_FRAMES=1,
-};
+
 struct TileDef
 {
 	std::string name;
 	bool backface_culling; // Takes effect only in special cases
 	bool tileable_horizontal;
 	bool tileable_vertical;
-	struct{
-		enum TileAnimationType type;
-		int aspect_w; // width for aspect ratio
-		int aspect_h; // height for aspect ratio
-		float length; // seconds
-	} animation;
+	struct TileAnimationParams animation;
 
 	TileDef()
 	{
@@ -185,9 +178,6 @@ struct TileDef
 		tileable_horizontal = true;
 		tileable_vertical = true;
 		animation.type = TAT_NONE;
-		animation.aspect_w = 1;
-		animation.aspect_h = 1;
-		animation.length = 1.0;
 	}
 
 	void serialize(std::ostream &os, u16 protocol_version) const;
@@ -359,6 +349,11 @@ public:
 	virtual void pendNodeResolve(NodeResolver *nr)=0;
 	virtual bool cancelNodeResolveCallback(NodeResolver *nr)=0;
 	virtual bool nodeboxConnects(const MapNode from, const MapNode to, u8 connect_face)=0;
+	/*!
+	 * Returns the smallest box in node coordinates that
+	 * contains all nodes' selection boxes.
+	 */
+	virtual core::aabbox3d<s16> getSelectionBoxIntUnion() const=0;
 };
 
 class IWritableNodeDefManager : public INodeDefManager {
@@ -416,6 +411,7 @@ public:
 	virtual void runNodeResolveCallbacks()=0;
 	virtual void resetNodeResolveState()=0;
 	virtual void mapNodeboxConnections()=0;
+	virtual core::aabbox3d<s16> getSelectionBoxIntUnion() const=0;
 };
 
 IWritableNodeDefManager *createNodeDefManager();

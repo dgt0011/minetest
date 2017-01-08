@@ -33,8 +33,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "gamedef.h"
 #include "util/directiontables.h"
 #include "util/mathconstants.h"
+#include "util/basic_macros.h"
 #include "rollback_interface.h"
 #include "environment.h"
+#include "reflowscan.h"
 #include "emerge.h"
 #include "mapgen_v6.h"
 #include "mg_biome.h"
@@ -55,8 +57,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "database-postgresql.h"
 #endif
 
-#define PP(x) "("<<(x).X<<","<<(x).Y<<","<<(x).Z<<")"
-
 
 /*
 	Map
@@ -66,6 +66,7 @@ Map::Map(std::ostream &dout, IGameDef *gamedef):
 	m_dout(dout),
 	m_gamedef(gamedef),
 	m_sector_cache(NULL),
+	m_nodedef(gamedef->ndef()),
 	m_transforming_liquid_loop_count_multiplier(1.0f),
 	m_unprocessed_count(0),
 	m_inc_trending_up_start_time(0),
@@ -174,7 +175,7 @@ bool Map::isNodeUnderground(v3s16 p)
 bool Map::isValidPosition(v3s16 p)
 {
 	v3s16 blockpos = getNodeBlockPos(p);
-	MapBlock *block = getBlockNoCreate(blockpos);
+	MapBlock *block = getBlockNoCreateNoEx(blockpos);
 	return (block != NULL);
 }
 
@@ -227,7 +228,7 @@ void Map::setNode(v3s16 p, MapNode & n)
 		bool temp_bool;
 		errorstream<<"Map::setNode(): Not allowing to place CONTENT_IGNORE"
 				<<" while trying to replace \""
-				<<m_gamedef->ndef()->get(block->getNodeNoCheck(relpos, &temp_bool)).name
+				<<m_nodedef->get(block->getNodeNoCheck(relpos, &temp_bool)).name
 				<<"\" at "<<PP(p)<<" (block "<<PP(blockpos)<<")"<<std::endl;
 		debug_stacks_print_to(infostream);
 		return;
@@ -257,8 +258,6 @@ void Map::unspreadLight(enum LightBank bank,
 		std::set<v3s16> & light_sources,
 		std::map<v3s16, MapBlock*>  & modified_blocks)
 {
-	INodeDefManager *nodemgr = m_gamedef->ndef();
-
 	v3s16 dirs[6] = {
 		v3s16(0,0,1), // back
 		v3s16(0,1,0), // top
@@ -353,20 +352,20 @@ void Map::unspreadLight(enum LightBank bank,
 				If the neighbor is dimmer than what was specified
 				as oldlight (the light of the previous node)
 			*/
-			if(n2.getLight(bank, nodemgr) < oldlight)
+			if(n2.getLight(bank, m_nodedef) < oldlight)
 			{
 				/*
 					And the neighbor is transparent and it has some light
 				*/
-				if(nodemgr->get(n2).light_propagates
-						&& n2.getLight(bank, nodemgr) != 0)
+				if(m_nodedef->get(n2).light_propagates
+						&& n2.getLight(bank, m_nodedef) != 0)
 				{
 					/*
 						Set light to 0 and add to queue
 					*/
 
-					u8 current_light = n2.getLight(bank, nodemgr);
-					n2.setLight(bank, 0, nodemgr);
+					u8 current_light = n2.getLight(bank, m_nodedef);
+					n2.setLight(bank, 0, m_nodedef);
 					block->setNode(relpos, n2);
 
 					unlighted_nodes[n2pos] = current_light;
@@ -421,8 +420,6 @@ void Map::spreadLight(enum LightBank bank,
 		std::set<v3s16> & from_nodes,
 		std::map<v3s16, MapBlock*> & modified_blocks)
 {
-	INodeDefManager *nodemgr = m_gamedef->ndef();
-
 	const v3s16 dirs[6] = {
 		v3s16(0,0,1), // back
 		v3s16(0,1,0), // top
@@ -476,7 +473,7 @@ void Map::spreadLight(enum LightBank bank,
 		bool is_valid_position;
 		MapNode n = block->getNode(relpos, &is_valid_position);
 
-		u8 oldlight = is_valid_position ? n.getLight(bank, nodemgr) : 0;
+		u8 oldlight = is_valid_position ? n.getLight(bank, m_nodedef) : 0;
 		u8 newlight = diminish_light(oldlight);
 
 		// Loop through 6 neighbors
@@ -512,7 +509,7 @@ void Map::spreadLight(enum LightBank bank,
 				If the neighbor is brighter than the current node,
 				add to list (it will light up this node on its turn)
 			*/
-			if(n2.getLight(bank, nodemgr) > undiminish_light(oldlight))
+			if(n2.getLight(bank, m_nodedef) > undiminish_light(oldlight))
 			{
 				lighted_nodes.insert(n2pos);
 				changed = true;
@@ -521,11 +518,11 @@ void Map::spreadLight(enum LightBank bank,
 				If the neighbor is dimmer than how much light this node
 				would spread on it, add to list
 			*/
-			if(n2.getLight(bank, nodemgr) < newlight)
+			if(n2.getLight(bank, m_nodedef) < newlight)
 			{
-				if(nodemgr->get(n2).light_propagates)
+				if(m_nodedef->get(n2).light_propagates)
 				{
-					n2.setLight(bank, newlight, nodemgr);
+					n2.setLight(bank, newlight, m_nodedef);
 					block->setNode(relpos, n2);
 					lighted_nodes.insert(n2pos);
 					changed = true;
@@ -558,8 +555,6 @@ void Map::updateLighting(enum LightBank bank,
 		std::map<v3s16, MapBlock*> & a_blocks,
 		std::map<v3s16, MapBlock*> & modified_blocks)
 {
-	INodeDefManager *nodemgr = m_gamedef->ndef();
-
 	/*m_dout<<"Map::updateLighting(): "
 			<<a_blocks.size()<<" blocks."<<std::endl;*/
 
@@ -614,12 +609,12 @@ void Map::updateLighting(enum LightBank bank,
 							<<std::endl;
 					continue;
 				}
-				u8 oldlight = n.getLight(bank, nodemgr);
-				n.setLight(bank, 0, nodemgr);
+				u8 oldlight = n.getLight(bank, m_nodedef);
+				n.setLight(bank, 0, m_nodedef);
 				block->setNode(p, n);
 
 				// If node sources light, add to list
-				u8 source = nodemgr->get(n).light_source;
+				u8 source = m_nodedef->get(n).light_source;
 				if(source != 0)
 					light_sources.insert(p + posnodes);
 
@@ -810,8 +805,6 @@ void Map::addNodeAndUpdate(v3s16 p, MapNode n,
 		std::map<v3s16, MapBlock*> &modified_blocks,
 		bool remove_metadata)
 {
-	INodeDefManager *ndef = m_gamedef->ndef();
-
 	// Collect old node for rollback
 	RollbackNode rollback_oldnode(this, p, m_gamedef);
 
@@ -825,14 +818,14 @@ void Map::addNodeAndUpdate(v3s16 p, MapNode n,
 
 	// Set the node on the map
 	// Ignore light (because calling voxalgo::update_lighting_nodes)
-	n.setLight(LIGHTBANK_DAY, 0, ndef);
-	n.setLight(LIGHTBANK_NIGHT, 0, ndef);
+	n.setLight(LIGHTBANK_DAY, 0, m_nodedef);
+	n.setLight(LIGHTBANK_NIGHT, 0, m_nodedef);
 	setNode(p, n);
 
 	// Update lighting
 	std::vector<std::pair<v3s16, MapNode> > oldnodes;
 	oldnodes.push_back(std::pair<v3s16, MapNode>(p, oldnode));
-	voxalgo::update_lighting_nodes(this, ndef, oldnodes, modified_blocks);
+	voxalgo::update_lighting_nodes(this, m_nodedef, oldnodes, modified_blocks);
 
 	for(std::map<v3s16, MapBlock*>::iterator
 			i = modified_blocks.begin();
@@ -869,11 +862,10 @@ void Map::addNodeAndUpdate(v3s16 p, MapNode n,
 
 		bool is_valid_position;
 		MapNode n2 = getNodeNoEx(p2, &is_valid_position);
-		if(is_valid_position
-				&& (ndef->get(n2).isLiquid() || n2.getContent() == CONTENT_AIR))
-		{
+		if(is_valid_position &&
+				(m_nodedef->get(n2).isLiquid() ||
+				n2.getContent() == CONTENT_AIR))
 			m_transforming_liquid.push_back(p2);
-		}
 	}
 }
 
@@ -1213,9 +1205,6 @@ s32 Map::transforming_liquid_size() {
 
 void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 {
-
-	INodeDefManager *nodemgr = m_gamedef->ndef();
-
 	DSTACK(FUNCTION_NAME);
 	//TimeTaker timer("transformLiquids()");
 
@@ -1275,12 +1264,12 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		// The node which will be placed there if liquid
 		// can't flow into this node.
 		content_t floodable_node = CONTENT_AIR;
-		const ContentFeatures &cf = nodemgr->get(n0);
+		const ContentFeatures &cf = m_nodedef->get(n0);
 		LiquidType liquid_type = cf.liquid_type;
 		switch (liquid_type) {
 			case LIQUID_SOURCE:
 				liquid_level = LIQUID_LEVEL_SOURCE;
-				liquid_kind = nodemgr->getId(cf.liquid_alternative_flowing);
+				liquid_kind = m_nodedef->getId(cf.liquid_alternative_flowing);
 				break;
 			case LIQUID_FLOWING:
 				liquid_level = (n0.param2 & LIQUID_LEVEL_MASK);
@@ -1309,6 +1298,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		NodeNeighbor neutrals[6]; // nodes that are solid or another kind of liquid
 		int num_neutrals = 0;
 		bool flowing_down = false;
+		bool ignored_sources = false;
 		for (u16 i = 0; i < 6; i++) {
 			NeighborType nt = NEIGHBOR_SAME_LEVEL;
 			switch (i) {
@@ -1321,8 +1311,8 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 			}
 			v3s16 npos = p0 + dirs[i];
 			NodeNeighbor nb(getNodeNoEx(npos), nt, npos);
-			const ContentFeatures &cfnb = nodemgr->get(nb.n);
-			switch (nodemgr->get(nb.n.getContent()).liquid_type) {
+			const ContentFeatures &cfnb = m_nodedef->get(nb.n);
+			switch (m_nodedef->get(nb.n.getContent()).liquid_type) {
 				case LIQUID_NONE:
 					if (cfnb.floodable) {
 						airs[num_airs++] = nb;
@@ -1336,17 +1326,22 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 							flowing_down = true;
 					} else {
 						neutrals[num_neutrals++] = nb;
-						// If neutral below is ignore prevent water spreading outwards
-						if (nb.t == NEIGHBOR_LOWER &&
-								nb.n.getContent() == CONTENT_IGNORE)
-							flowing_down = true;
+						if (nb.n.getContent() == CONTENT_IGNORE) {
+							// If node below is ignore prevent water from
+							// spreading outwards and otherwise prevent from
+							// flowing away as ignore node might be the source
+							if (nb.t == NEIGHBOR_LOWER)
+								flowing_down = true;
+							else
+								ignored_sources = true;
+						}
 					}
 					break;
 				case LIQUID_SOURCE:
 					// if this node is not (yet) of a liquid type, choose the first liquid type we encounter
 					if (liquid_kind == CONTENT_AIR)
-						liquid_kind = nodemgr->getId(cfnb.liquid_alternative_flowing);
-					if (nodemgr->getId(cfnb.liquid_alternative_flowing) != liquid_kind) {
+						liquid_kind = m_nodedef->getId(cfnb.liquid_alternative_flowing);
+					if (m_nodedef->getId(cfnb.liquid_alternative_flowing) != liquid_kind) {
 						neutrals[num_neutrals++] = nb;
 					} else {
 						// Do not count bottom source, it will screw things up
@@ -1357,8 +1352,8 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 				case LIQUID_FLOWING:
 					// if this node is not (yet) of a liquid type, choose the first liquid type we encounter
 					if (liquid_kind == CONTENT_AIR)
-						liquid_kind = nodemgr->getId(cfnb.liquid_alternative_flowing);
-					if (nodemgr->getId(cfnb.liquid_alternative_flowing) != liquid_kind) {
+						liquid_kind = m_nodedef->getId(cfnb.liquid_alternative_flowing);
+					if (m_nodedef->getId(cfnb.liquid_alternative_flowing) != liquid_kind) {
 						neutrals[num_neutrals++] = nb;
 					} else {
 						flows[num_flows++] = nb;
@@ -1376,15 +1371,15 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		s8 new_node_level = -1;
 		s8 max_node_level = -1;
 
-		u8 range = nodemgr->get(liquid_kind).liquid_range;
+		u8 range = m_nodedef->get(liquid_kind).liquid_range;
 		if (range > LIQUID_LEVEL_MAX + 1)
 			range = LIQUID_LEVEL_MAX + 1;
 
-		if ((num_sources >= 2 && nodemgr->get(liquid_kind).liquid_renewable) || liquid_type == LIQUID_SOURCE) {
+		if ((num_sources >= 2 && m_nodedef->get(liquid_kind).liquid_renewable) || liquid_type == LIQUID_SOURCE) {
 			// liquid_kind will be set to either the flowing alternative of the node (if it's a liquid)
 			// or the flowing alternative of the first of the surrounding sources (if it's air), so
 			// it's perfectly safe to use liquid_kind here to determine the new node content.
-			new_node_content = nodemgr->getId(nodemgr->get(liquid_kind).liquid_alternative_source);
+			new_node_content = m_nodedef->getId(m_nodedef->get(liquid_kind).liquid_alternative_source);
 		} else if (num_sources >= 1 && sources[0].t != NEIGHBOR_LOWER) {
 			// liquid_kind is set properly, see above
 			max_node_level = new_node_level = LIQUID_LEVEL_MAX;
@@ -1392,6 +1387,11 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 				new_node_content = liquid_kind;
 			else
 				new_node_content = floodable_node;
+		} else if (ignored_sources && liquid_level >= 0) {
+			// Maybe there are neighbouring sources that aren't loaded yet
+			// so prevent flowing away.
+			new_node_level = liquid_level;
+			new_node_content = liquid_kind;
 		} else {
 			// no surrounding sources, so get the maximum level that can flow into this node
 			for (u16 i = 0; i < num_flows; i++) {
@@ -1416,7 +1416,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 				}
 			}
 
-			u8 viscosity = nodemgr->get(liquid_kind).liquid_viscosity;
+			u8 viscosity = m_nodedef->get(liquid_kind).liquid_viscosity;
 			if (viscosity > 1 && max_node_level != liquid_level) {
 				// amount to gain, limited by viscosity
 				// must be at least 1 in absolute value
@@ -1444,7 +1444,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 			check if anything has changed. if not, just continue with the next node.
 		 */
 		if (new_node_content == n0.getContent() &&
-				(nodemgr->get(n0.getContent()).liquid_type != LIQUID_FLOWING ||
+				(m_nodedef->get(n0.getContent()).liquid_type != LIQUID_FLOWING ||
 				((n0.param2 & LIQUID_LEVEL_MASK) == (u8)new_node_level &&
 				((n0.param2 & LIQUID_FLOW_DOWN_MASK) == LIQUID_FLOW_DOWN_MASK)
 				== flowing_down)))
@@ -1456,7 +1456,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		 */
 		MapNode n00 = n0;
 		//bool flow_down_enabled = (flowing_down && ((n0.param2 & LIQUID_FLOW_DOWN_MASK) != LIQUID_FLOW_DOWN_MASK));
-		if (nodemgr->get(new_node_content).liquid_type == LIQUID_FLOWING) {
+		if (m_nodedef->get(new_node_content).liquid_type == LIQUID_FLOWING) {
 			// set level to last 3 bits, flowing down bit to 4th bit
 			n0.param2 = (flowing_down ? LIQUID_FLOW_DOWN_MASK : 0x00) | (new_node_level & LIQUID_LEVEL_MASK);
 		} else {
@@ -1466,8 +1466,8 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		n0.setContent(new_node_content);
 
 		// Ignore light (because calling voxalgo::update_lighting_nodes)
-		n0.setLight(LIGHTBANK_DAY, 0, nodemgr);
-		n0.setLight(LIGHTBANK_NIGHT, 0, nodemgr);
+		n0.setLight(LIGHTBANK_DAY, 0, m_nodedef);
+		n0.setLight(LIGHTBANK_NIGHT, 0, m_nodedef);
 
 		// Find out whether there is a suspect for this action
 		std::string suspect;
@@ -1501,7 +1501,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 		/*
 			enqueue neighbors for update if neccessary
 		 */
-		switch (nodemgr->get(n0.getContent()).liquid_type) {
+		switch (m_nodedef->get(n0.getContent()).liquid_type) {
 			case LIQUID_SOURCE:
 			case LIQUID_FLOWING:
 				// make sure source flows into all neighboring nodes
@@ -1524,7 +1524,7 @@ void Map::transformLiquids(std::map<v3s16, MapBlock*> &modified_blocks)
 	for (std::deque<v3s16>::iterator iter = must_reflow.begin(); iter != must_reflow.end(); ++iter)
 		m_transforming_liquid.push_back(*iter);
 
-	voxalgo::update_lighting_nodes(this, nodemgr, changed_nodes, modified_blocks);
+	voxalgo::update_lighting_nodes(this, m_nodedef, changed_nodes, modified_blocks);
 
 
 	/* ----------------------------------------------------------------------
@@ -1889,7 +1889,7 @@ bool ServerMap::initBlockMake(v3s16 blockpos, BlockMakeData *data)
 	data->blockpos_min = bpmin;
 	data->blockpos_max = bpmax;
 	data->blockpos_requested = blockpos;
-	data->nodedef = m_gamedef->ndef();
+	data->nodedef = m_nodedef;
 
 	/*
 		Create the whole area of this and the neighboring blocks
@@ -2894,8 +2894,11 @@ void ServerMap::loadBlock(std::string sectordir, std::string blockfile,
 		block->deSerialize(is, version, true);
 
 		// If it's a new block, insert it to the map
-		if(created_new)
+		if (created_new) {
 			sector->insertBlock(block);
+			ReflowScan scanner(this, m_emerge->ndef);
+			scanner.scan(block, &m_transforming_liquid);
+		}
 
 		/*
 			Save blocks loaded in old format in new format
@@ -2961,8 +2964,11 @@ void ServerMap::loadBlock(std::string *blob, v3s16 p3d, MapSector *sector, bool 
 		block->deSerialize(is, version, true);
 
 		// If it's a new block, insert it to the map
-		if(created_new)
+		if (created_new) {
 			sector->insertBlock(block);
+			ReflowScan scanner(this, m_emerge->ndef);
+			scanner.scan(block, &m_transforming_liquid);
+		}
 
 		/*
 			Save blocks loaded in old format in new format

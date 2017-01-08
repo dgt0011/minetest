@@ -12,24 +12,16 @@ ANDR_ROOT = $(shell pwd)
 PROJ_ROOT = $(shell realpath $(ANDR_ROOT)/../..)
 APP_ROOT = $(ANDR_ROOT)/src/main
 
-GAMES_TO_COPY = eidy
+GAMES_TO_COPY = minetest_game
 MODS_TO_COPY =
 
-#VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
-#	grep ^set\(VERSION_MAJOR\ | sed 's/)/ /' | cut -f2 -d' ')
-#VERSION_MINOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
-#	grep ^set\(VERSION_MINOR\ | sed 's/)/ /' | cut -f2 -d' ')
-#VERSION_PATCH := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
-#	grep ^set\(VERSION_PATCH\ | sed 's/)/ /' | cut -f2 -d' ')
 
-VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/android_version.txt | \
+VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
 	grep ^set\(VERSION_MAJOR\ | sed 's/)/ /' | cut -f2 -d' ')
-VERSION_MINOR := $(shell cat $(PROJ_ROOT)/android_version.txt | \
+VERSION_MINOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
 	grep ^set\(VERSION_MINOR\ | sed 's/)/ /' | cut -f2 -d' ')
-VERSION_PATCH := $(shell cat $(PROJ_ROOT)/android_version.txt | \
+VERSION_PATCH := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
 	grep ^set\(VERSION_PATCH\ | sed 's/)/ /' | cut -f2 -d' ')
-
-
 
 ################################################################################
 # toolchain config for arm new processors
@@ -84,8 +76,6 @@ OPENAL_LIB = $(OPENAL_DIR)libs/$(TARGET_ABI)/libopenal.so
 OPENAL_TIMESTAMP = $(OPENAL_DIR)/timestamp
 OPENAL_TIMESTAMP_INT = $(ANDR_ROOT)/deps/openal_timestamp
 OPENAL_URL_GIT = https://github.com/apportable/openal-soft
-# Try using more recent merge of openal
-OPENAL_BRANCH=li-merge
 
 OGG_DIR = $(ANDR_ROOT)/deps/libvorbis-libogg-android/
 OGG_LIB = $(OGG_DIR)libs/$(TARGET_ABI)/libogg.so
@@ -94,12 +84,6 @@ OGG_TIMESTAMP = $(OGG_DIR)timestamp
 OGG_TIMESTAMP_INT = $(ANDR_ROOT)/deps/ogg_timestamp
 OGG_URL_GIT = https://github.com/vincentjames501/libvorbis-libogg-android
 
-LIBINTLLITE_DIR = $(ANDR_ROOT)/deps/libintl-lite
-LIBINTLLITE_LIB = $(LIBINTLLITE_DIR)libs/$(TARGET_ABI)/libintl.a
-LIBINTLLITE_TIMESTAMP = $(LIBINTLLITE_DIR)timestamp
-LIBINTLLITE_TIMESTAMP_INT = $(ANDR_ROOT)/deps/libintllite_timestamp
-LIBINTLLITE_URL_GIT = https://github.com/eidy/libintl-lite
-
 IRRLICHT_REVISION = 5122
 IRRLICHT_DIR = $(ANDR_ROOT)/deps/irrlicht/
 IRRLICHT_LIB = $(IRRLICHT_DIR)lib/Android/libIrrlicht.a
@@ -107,7 +91,7 @@ IRRLICHT_TIMESTAMP = $(IRRLICHT_DIR)timestamp
 IRRLICHT_TIMESTAMP_INT = $(ANDR_ROOT)/deps/irrlicht_timestamp
 IRRLICHT_URL_SVN = https://svn.code.sf.net/p/irrlicht/code/branches/ogl-es@$(IRRLICHT_REVISION)
 
-OPENSSL_VERSION = 1.0.2h
+OPENSSL_VERSION = 1.0.2j
 OPENSSL_BASEDIR = openssl-$(OPENSSL_VERSION)
 OPENSSL_DIR = $(ANDR_ROOT)/deps/$(OPENSSL_BASEDIR)/
 OPENSSL_LIB = $(OPENSSL_DIR)/libssl.so.1.0.0
@@ -115,14 +99,14 @@ OPENSSL_TIMESTAMP = $(OPENSSL_DIR)timestamp
 OPENSSL_TIMESTAMP_INT = $(ANDR_ROOT)/deps/openssl_timestamp
 OPENSSL_URL = https://www.openssl.org/source/openssl-$(OPENSSL_VERSION).tar.gz
 
-CURL_VERSION = 7.48.0
+CURL_VERSION = 7.52.0
 CURL_DIR = $(ANDR_ROOT)/deps/curl-$(CURL_VERSION)
 CURL_LIB = $(CURL_DIR)/lib/.libs/libcurl.a
 CURL_TIMESTAMP = $(CURL_DIR)/timestamp
 CURL_TIMESTAMP_INT = $(ANDR_ROOT)/deps/curl_timestamp
 CURL_URL_HTTP = https://curl.haxx.se/download/curl-${CURL_VERSION}.tar.bz2
 
-GMP_VERSION = 6.1.0
+GMP_VERSION = 6.1.2
 GMP_DIR = $(ANDR_ROOT)/deps/gmp-$(GMP_VERSION)
 GMP_LIB = $(GMP_DIR)/usr/lib/libgmp.so
 GMP_TIMESTAMP = $(GMP_DIR)/timestamp
@@ -142,7 +126,7 @@ ICONV_TIMESTAMP = $(ICONV_DIR)timestamp
 ICONV_TIMESTAMP_INT = $(ANDR_ROOT)/deps/iconv_timestamp
 ICONV_URL_HTTP = https://ftp.gnu.org/pub/gnu/libiconv/libiconv-$(ICONV_VERSION).tar.gz
 
-SQLITE3_FOLDER = sqlite-amalgamation-3120200
+SQLITE3_FOLDER = sqlite-amalgamation-3150200
 SQLITE3_URL = https://www.sqlite.org/2016/$(SQLITE3_FOLDER).zip
 
 ANDROID_SDK = $(shell grep '^sdk\.dir' local.properties | sed 's/^.*=[[:space:]]*//')
@@ -165,7 +149,7 @@ endif
 	$(ASSETS_TIMESTAMP) $(LEVELDB_TIMESTAMP) \
 	$(OPENAL_TIMESTAMP) $(OGG_TIMESTAMP) \
 	$(IRRLICHT_TIMESTAMP) $(CURL_TIMESTAMP) \
-	$(OPENSSL_TIMESTAMP) $(LIBINTLLITE_TIMESTAMP) \
+	$(OPENSSL_TIMESTAMP) \
 	$(ANDR_ROOT)/jni/src/android_version.h \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h
 
@@ -184,7 +168,7 @@ release : local.properties
 reconfig: delconfig
 	@$(MAKE) local.properties
 
-delconfig :
+delconfig:
 	$(RM) local.properties
 
 local.properties:
@@ -217,7 +201,7 @@ openal_download :
 		echo "openal sources missing, downloading...";                         \
 		mkdir -p ${ANDR_ROOT}/deps;                                            \
 		cd ${ANDR_ROOT}/deps ;                                                 \
-		git clone -b ${OPENAL_BRANCH} ${OPENAL_URL_GIT} || exit 1;                                 \
+		git clone ${OPENAL_URL_GIT} || exit 1;                                 \
 	fi
 
 openal : $(OPENAL_LIB)
@@ -236,9 +220,11 @@ $(OPENAL_LIB): $(OPENAL_TIMESTAMP)
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH} APP_ABI=${TARGET_ABI}               \
 		TARGET_ARCH_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}             \
+		PRIVATE_CC=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}gcc \
+		PRIVATE_CXX=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}g++ \
 		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
-	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
+		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	touch ${OPENAL_TIMESTAMP};                                                 \
 	touch ${OPENAL_TIMESTAMP_INT};                                             \
 	else                                                                       \
@@ -281,10 +267,12 @@ $(OGG_LIB): $(OGG_TIMESTAMP)
 	cd ${OGG_DIR};                                                             \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
-	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
-	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+		APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                     \
+		PRIVATE_CC=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}gcc \
+		PRIVATE_CXX=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}g++ \
+		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
+		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
+		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	touch ${OGG_TIMESTAMP};                                                    \
 	touch ${OGG_TIMESTAMP_INT};                                                \
 	else                                                                       \
@@ -294,51 +282,6 @@ $(OGG_LIB): $(OGG_TIMESTAMP)
 clean_ogg :
 	$(RM) -rf ${OGG_DIR}
 
-$(LIBINTLLITE_TIMESTAMP) : libintllite_download
-	@LAST_MODIF=$$(find ${LIBINTLLITE_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
-	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
-		touch ${LIBINTLLITE_TIMESTAMP};                                                \
-	fi
-
-libintllite_download :
-	@if [ ! -d ${LIBINTLLITE_DIR} ] ; then                                             \
-		echo "libintllite sources missing, downloading...";                            \
-		mkdir -p ${ANDR_ROOT}/deps;                                            \
-		cd ${ANDR_ROOT}/deps ;                                                 \
-		git clone ${LIBINTLLITE_URL_GIT}|| exit 1;                                     \
-	fi
-
-libintllite : $(LIBINTLLITE_LIB)
-
-$(LIBINTLLITE_LIB): $(LIBINTLLITE_TIMESTAMP)
-	+ @REFRESH=0;                                                                \
-	if [ ! -e ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                                    \
-		echo "${LIBINTLLITE_TIMESTAMP_INT} doesn't exist";                             \
-		REFRESH=1;                                                             \
-	fi;                                                                        \
-	if [ ${LIBINTLLITE_TIMESTAMP} -nt ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                    \
-		REFRESH=1;                                                             \
-	fi;                                                                        \
-	if [ $$REFRESH -ne 0 ] ; then                                              \
-	echo "changed timestamp for libintl-lite detected building...";                     \
-	cd ${LIBINTLLITE_DIR};                                                             \
-	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
-		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
-	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
-	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
-	touch ${LIBINTLLITE_TIMESTAMP};                                                    \
-	touch ${LIBINTLLITE_TIMESTAMP_INT};                                                \
-	else                                                                       \
-		echo "nothing to be done for libintl-lite";                        \
-	fi
-
-clean_libintllite :
-	$(RM) -rf ${LIBINTLLITE_DIR}
-	
-	
-	
 $(OPENSSL_TIMESTAMP) : openssl_download
 	@LAST_MODIF=$$(find ${OPENSSL_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
@@ -373,8 +316,9 @@ $(OPENSSL_LIB): $(OPENSSL_TIMESTAMP) $(GMP_LIB)
 	ln -s ${OPENSSL_DIR} ../openssl;                                           \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-openssl;                          \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
-	--install-dir=$${TOOLCHAIN};                                               \
+		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
+		--platform=android-9                                                   \
+		--install-dir=$${TOOLCHAIN};                                           \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	CC=${CROSS_PREFIX}gcc ./Configure enable-gmp -DL_ENDIAN -I${GMP_DIR} -L${GMP_DIR}/usr/lib android-${TARGET_ARCH};\
 	CC=${CROSS_PREFIX}gcc ANDROID_DEV=/tmp/ndk-${TARGET_HOST} make depend;     \
@@ -423,8 +367,9 @@ $(LEVELDB_LIB): $(LEVELDB_TIMESTAMP)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-leveldb;                          \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
-	--install-dir=$${TOOLCHAIN};                                               \
+		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
+		--platform=android-9                                                   \
+		--install-dir=$${TOOLCHAIN};                                           \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -476,10 +421,12 @@ $(FREETYPE_LIB) : $(FREETYPE_TIMESTAMP)
 	cd ${FREETYPE_DIR}/Android/jni;                                            \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-	APP_PLATFORM=${APP_PLATFORM} APP_ABI=${TARGET_ABI}                         \
-	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
-	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+		APP_PLATFORM=${APP_PLATFORM} APP_ABI=${TARGET_ABI}                     \
+		PRIVATE_CC=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}gcc \
+		PRIVATE_CXX=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}g++ \
+		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
+		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
+		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	touch ${FREETYPE_TIMESTAMP};                                               \
 	touch ${FREETYPE_TIMESTAMP_INT};                                           \
 	else                                                                       \
@@ -529,8 +476,9 @@ $(ICONV_LIB) : $(ICONV_TIMESTAMP)
 	\
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-iconv;                            \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
-	--install-dir=$${TOOLCHAIN};                                               \
+		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
+		--platform=android-9                                                   \
+		--install-dir=$${TOOLCHAIN};                                           \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -591,10 +539,12 @@ $(IRRLICHT_LIB): $(IRRLICHT_TIMESTAMP) $(FREETYPE_LIB)
 	cd deps/irrlicht/source/Irrlicht/Android;                                  \
 	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
 		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
-	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
-	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
-	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+		APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                     \
+		PRIVATE_CC=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}gcc \
+		PRIVATE_CXX=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}g++ \
+		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
+		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
+		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	touch ${IRRLICHT_TIMESTAMP};                                               \
 	touch ${IRRLICHT_TIMESTAMP_INT};                                           \
 	else                                                                       \
@@ -641,8 +591,9 @@ $(CURL_LIB): $(CURL_TIMESTAMP) $(OPENSSL_LIB)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-curl;                             \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
-	--install-dir=$${TOOLCHAIN};                                               \
+		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
+		--platform=android-9                                                   \
+		--install-dir=$${TOOLCHAIN};                                           \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -700,8 +651,9 @@ $(GMP_LIB): $(GMP_TIMESTAMP)
 	export CROSS_PREFIX=${CROSS_PREFIX};                                       \
 	export TOOLCHAIN=/tmp/ndk-${TARGET_HOST}-gmp;                              \
 	${ANDROID_NDK}/build/tools/make-standalone-toolchain.sh                    \
-	--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                         \
-	--install-dir=$${TOOLCHAIN};                                               \
+		--toolchain=${TARGET_TOOLCHAIN}${COMPILER_VERSION}                     \
+		--platform=android-9                                                   \
+		--install-dir=$${TOOLCHAIN};                                           \
 	export PATH="$${TOOLCHAIN}/bin:$${PATH}";                                  \
 	export CC=${CROSS_PREFIX}gcc;                                              \
 	export CXX=${CROSS_PREFIX}g++;                                             \
@@ -726,7 +678,9 @@ deps/${SQLITE3_FOLDER}/sqlite3.c :
 	cd deps;                                                                    \
 	wget ${SQLITE3_URL};                                                        \
 	unzip ${SQLITE3_FOLDER}.zip;                                                \
-	ln -s ${SQLITE3_FOLDER} sqlite
+	ln -s ${SQLITE3_FOLDER} sqlite;                                             \
+	cd ${SQLITE3_FOLDER};                                                       \
+	patch sqlite3.c < ${ANDR_ROOT}/patches/sqlite3-readonly-fix.patch
 
 clean_sqlite3:
 	cd deps && $(RM) -rf ${SQLITE3_FOLDER} && $(RM) -f ${SQLITE3_FOLDER}.zip && \
@@ -734,7 +688,7 @@ clean_sqlite3:
 
 $(ASSETS_TIMESTAMP) : $(IRRLICHT_LIB)
 	@mkdir -p ${ANDR_ROOT}/deps;                                                \
-	for DIRNAME in {builtin,client,doc,fonts,games,mods,locale,textures}; do        \
+	for DIRNAME in {builtin,client,doc,fonts,games,mods,po,textures}; do        \
 		LAST_MODIF=$$(find ${PROJ_ROOT}/${DIRNAME} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 		if [ $$(basename $$LAST_MODIF) != "timestamp" ]; then               \
 			touch ${PROJ_ROOT}/${DIRNAME}/timestamp;                   \
@@ -772,33 +726,27 @@ assets : $(ASSETS_TIMESTAMP)
 	if [ $$REFRESH -ne 0 ] ; then                                              \
 	echo "assets changed, refreshing...";                                      \
 	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
-	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
-	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
-	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
-	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
-	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
-	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/eidy/client;      \
-	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/eidy/LICENSE.txt;  \
-	mkdir -p ${APP_ROOT}/assets/eidy/fonts;                                   \
-	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/eidy/fonts/;         \
-	mkdir -p ${APP_ROOT}/assets/eidy/games;                                   \
+	mkdir -p ${APP_ROOT}/assets/Minetest;                                      \
+	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/Minetest;         \
+	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/Minetest;                    \
+	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/Minetest;                    \
+	mkdir -p ${APP_ROOT}/assets/Minetest/client;                                  \
+	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/Minetest/client;      \
+	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/Minetest/LICENSE.txt;  \
+	mkdir -p ${APP_ROOT}/assets/Minetest/fonts;                                   \
+	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/Minetest/fonts/;         \
+	mkdir -p ${APP_ROOT}/assets/Minetest/games;                                   \
 	for game in ${GAMES_TO_COPY}; do                                           \
-	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
-	done; 									   \
-	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
-	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
-	for mod in ${MODS_TO_COPY}; do                                             \
-	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
+	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/Minetest/games/;    \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/eidy;                         \
-	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
-	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
-	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
-	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
-	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/eidy;					\
-	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/eidy/media;     \
+	mkdir -p ${APP_ROOT}/assets/Minetest/mods;                                    \
+	for mod in ${MODS_TO_COPY}; do                                             \
+	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/Minetest/mods/;       \
+	done;                                                                      \
+	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/Minetest;                         \
+	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/Minetest;                   \
+	mkdir -p ${APP_ROOT}/assets/Minetest/media;                                \
+	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/Minetest/media;     \
 	cd ${APP_ROOT}/assets ||  exit 1;                                          \
 	find . -name "timestamp" -exec rm {} \; ;                                  \
 	find . -name "*.blend" -exec rm {} \; ;                                    \
@@ -807,7 +755,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L eidy | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
+	find -L Minetest > filelist.txt;                                             \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
@@ -817,32 +765,33 @@ clean_assets :
 	@$(RM) -r assets
 
 apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB) $(LEVELDB_TARGET)       \
-	$(OPENAL_LIB) $(OGG_LIB) $(LIBINTLLITE_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
+	$(OPENAL_LIB) $(OGG_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h sqlite3_download
 	+ @${ANDROID_NDK}/ndk-build NDK_MODULE_PATH=${NDK_MODULE_PATH}             \
-	GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}          \
-	APP_PLATFORM=${APP_PLATFORM}                                               \
-	TARGET_LIBDIR=${TARGET_LIBDIR}                                             \
-	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
-	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+		GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}      \
+		APP_PLATFORM=${APP_PLATFORM}                                           \
+		PRIVATE_CC=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}gcc \
+		PRIVATE_CXX=${NDK_MODULE_PATH}/${TARGET_TOOLCHAIN}${COMPILER_VERSION}/prebuilt/linux-x86_64/bin/${TARGET_TOOLCHAIN}g++ \
+		TARGET_LIBDIR=${TARGET_LIBDIR}                                         \
+		TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                \
+		TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                              \
 		TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                 \
 	if [ ! -e ${APP_ROOT}/jniLibs ]; then                                      \
 		ln -s ${ANDR_ROOT}/libs ${APP_ROOT}/jniLibs || exit 1;                 \
 	fi;                                                                        \
 	export VERSION_STR="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" && \
 	export BUILD_TYPE_C=$$(echo "$${BUILD_TYPE}" | sed 's/./\U&/') &&          \
-	gradle assemble$$BUILD_TYPE_C &&                                           \
-	echo "Version: $${VERSION_STR}"	&&											\
-	echo "APK stored at: build/outputs/apk/eidy-$$BUILD_TYPE.apk" &&       \
+	./gradlew assemble$$BUILD_TYPE_C &&                                           \
+	echo "APK stored at: build/outputs/apk/Minetest-$$BUILD_TYPE.apk" &&       \
 	echo "You can install it with \`make install_$$BUILD_TYPE\`"
 
 # These Intentionally doesn't depend on their respective build steps,
 # because it takes a while to verify that everything's up-to-date.
-install_debug :
-	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/eidy-debug.apk
+install_debug:
+	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/Minetest-debug.apk
 
 install_release:
-	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/eidy-release.apk
+	${ANDROID_SDK}/platform-tools/adb install -r build/outputs/apk/Minetest-release.apk
 
 prep_srcdir :
 	@if [ ! -e ${ANDR_ROOT}/jni/src ]; then                                    \
@@ -850,7 +799,7 @@ prep_srcdir :
 	fi
 
 clean_apk :
-	gradle clean
+	./gradlew clean
 
 clean_all :
 	@$(MAKE) clean_apk;                                                        \
@@ -887,8 +836,8 @@ $(ANDR_ROOT)/jni/src/android_version.h : prep_srcdir
 	echo "#define VERSION_MAJOR ${VERSION_MAJOR}";                             \
 	echo "#define VERSION_MINOR ${VERSION_MINOR}";                             \
 	echo "#define VERSION_PATCH ${VERSION_PATCH}";                             \
-	echo "#define VERSION_STRING STR(VERSION_MAJOR)\".\"STR(VERSION_MINOR)\
-	\".\"STR(VERSION_PATCH)";                                                  \
+	echo "#define VERSION_STRING STR(VERSION_MAJOR) \".\" STR(VERSION_MINOR) \
+	\".\" STR(VERSION_PATCH)";                                                 \
 	echo "#endif";                                                             \
 	} > $${VERSION_FILE_NEW};                                                  \
 	if ! cmp -s $${VERSION_FILE} $${VERSION_FILE_NEW}; then                    \
@@ -899,4 +848,3 @@ $(ANDR_ROOT)/jni/src/android_version.h : prep_srcdir
 	fi
 
 clean : clean_apk clean_assets
-

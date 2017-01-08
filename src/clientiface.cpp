@@ -26,7 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "settings.h"
 #include "mapblock.h"
 #include "network/connection.h"
-#include "environment.h"
+#include "serverenvironment.h"
 #include "map.h"
 #include "emerge.h"
 #include "content_sao.h"              // TODO this is used for cleanup of only
@@ -357,7 +357,7 @@ queue_full_break:
 	} else if(nearest_emergefull_d != -1){
 		new_nearest_unsent_d = nearest_emergefull_d;
 	} else {
-		if(d > g_settings->getS16("max_block_send_distance")){
+		if(d > full_d_max){
 			new_nearest_unsent_d = 0;
 			m_nothing_to_send_pause_timer = 2.0;
 		} else {

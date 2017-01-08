@@ -138,9 +138,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 		Add nodedef v3 - connected nodeboxes
 	PROTOCOL_VERSION 28:
 		CPT2_MESHOPTIONS
+	PROTOCOL_VERSION 29:
+		Server doesn't accept TOSERVER_BREATH anymore
+		serialization of TileAnimation params changed
+		TAT_SHEET_2D
 */
 
-#define LATEST_PROTOCOL_VERSION 28
+#define LATEST_PROTOCOL_VERSION 29
 
 // Server's supported network protocol range
 #define SERVER_PROTOCOL_VERSION_MIN 13
@@ -666,7 +670,7 @@ enum ToServerCommand
 		[2+12+12+4] s32 yaw*100
 		[2+12+12+4+4] u32 keyPressed
 		[2+12+12+4+4+1] u8 fov*80
-		[2+12+12+4+4+4+1] u8 wanted_range / MAP_BLOCKSIZE
+		[2+12+12+4+4+4+1] u8 ceil(wanted_range / MAP_BLOCKSIZE)
 	*/
 
 	TOSERVER_GOTBLOCKS = 0x24,
@@ -847,7 +851,7 @@ enum ToServerCommand
 		<no payload data>
 	*/
 
-	TOSERVER_BREATH = 0x42,
+	TOSERVER_BREATH = 0x42, // Obsolete
 	/*
 		u16 breath
 	*/

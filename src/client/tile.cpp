@@ -948,7 +948,7 @@ video::ITexture* TextureSource::generateTextureFromMesh(
 	smgr->drop();
 
 	// Unset render target
-	driver->setRenderTarget(0, false, true, 0);
+	driver->setRenderTarget(0, false, true, video::SColor(0,0,0,0));
 
 	if (params.delete_texture_on_shutdown)
 		m_texture_trash.push_back(rtt);
@@ -1836,6 +1836,49 @@ bool TextureSource::generateImagePart(std::string part_of_name,
 				c.color ^= mask;	
 				baseimg->setPixel(x, y, c);
 			}
+		}
+		/*
+			[sheet:WxH:X,Y
+			Retrieves a tile at position X,Y (in tiles)
+			from the base image it assumes to be a
+			tilesheet with dimensions W,H (in tiles).
+		*/
+		else if (part_of_name.substr(0,7) == "[sheet:") {
+			if (baseimg == NULL) {
+				errorstream << "generateImagePart(): baseimg != NULL "
+						<< "for part_of_name=\"" << part_of_name
+						<< "\", cancelling." << std::endl;
+				return false;
+			}
+
+			Strfnd sf(part_of_name);
+			sf.next(":");
+			u32 w0 = stoi(sf.next("x"));
+			u32 h0 = stoi(sf.next(":"));
+			u32 x0 = stoi(sf.next(","));
+			u32 y0 = stoi(sf.next(":"));
+
+			core::dimension2d<u32> img_dim = baseimg->getDimension();
+			core::dimension2d<u32> tile_dim(v2u32(img_dim) / v2u32(w0, h0));
+
+			video::IImage *img = driver->createImage(
+					video::ECF_A8R8G8B8, tile_dim);
+			if (!img) {
+				errorstream << "generateImagePart(): Could not create image "
+						<< "for part_of_name=\"" << part_of_name
+						<< "\", cancelling." << std::endl;
+				return false;
+			}
+
+			img->fill(video::SColor(0,0,0,0));
+			v2u32 vdim(tile_dim);
+			core::rect<s32> rect(v2s32(x0 * vdim.X, y0 * vdim.Y), tile_dim);
+			baseimg->copyToWithAlpha(img, v2s32(0), rect,
+					video::SColor(255,255,255,255), NULL);
+
+			// Replace baseimg
+			baseimg->drop();
+			baseimg = img;
 		}
 		else
 		{
