@@ -28,7 +28,7 @@ import android.graphics.Rect;
 import android.graphics.Paint;
 import android.text.TextPaint;
 import android.content.SharedPreferences;
-
+import android.view.WindowManager;
 
 
 public class MinetestAssetCopy extends Activity
