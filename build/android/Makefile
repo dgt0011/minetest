@@ -84,6 +84,12 @@ OGG_TIMESTAMP = $(OGG_DIR)timestamp
 OGG_TIMESTAMP_INT = $(ANDR_ROOT)/deps/ogg_timestamp
 OGG_URL_GIT = https://github.com/vincentjames501/libvorbis-libogg-android
 
+LIBINTLLITE_DIR = $(ANDR_ROOT)/deps/libintl-lite
+LIBINTLLITE_LIB = $(LIBINTLLITE_DIR)libs/$(TARGET_ABI)/libintl.a
+LIBINTLLITE_TIMESTAMP = $(LIBINTLLITE_DIR)timestamp
+LIBINTLLITE_TIMESTAMP_INT = $(ANDR_ROOT)/deps/libintllite_timestamp
+LIBINTLLITE_URL_GIT = https://github.com/eidy/libintl-lite
+
 IRRLICHT_REVISION = 5122
 IRRLICHT_DIR = $(ANDR_ROOT)/deps/irrlicht/
 IRRLICHT_LIB = $(IRRLICHT_DIR)lib/Android/libIrrlicht.a
@@ -149,7 +155,7 @@ endif
 	$(ASSETS_TIMESTAMP) $(LEVELDB_TIMESTAMP) \
 	$(OPENAL_TIMESTAMP) $(OGG_TIMESTAMP) \
 	$(IRRLICHT_TIMESTAMP) $(CURL_TIMESTAMP) \
-	$(OPENSSL_TIMESTAMP) \
+	$(OPENSSL_TIMESTAMP) $(LIBINTLLITE_TIMESTAMP)\
 	$(ANDR_ROOT)/jni/src/android_version.h \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h
 
@@ -282,6 +288,50 @@ $(OGG_LIB): $(OGG_TIMESTAMP)
 clean_ogg :
 	$(RM) -rf ${OGG_DIR}
 
+$(LIBINTLLITE_TIMESTAMP) : libintllite_download
+	@LAST_MODIF=$$(find ${LIBINTLLITE_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
+	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
+		touch ${LIBINTLLITE_TIMESTAMP};                                                \
+	fi
+
+libintllite_download :
+	@if [ ! -d ${LIBINTLLITE_DIR} ] ; then                                             \
+		echo "libintllite sources missing, downloading...";                            \
+		mkdir -p ${ANDR_ROOT}/deps;                                            \
+		cd ${ANDR_ROOT}/deps ;                                                 \
+		git clone ${LIBINTLLITE_URL_GIT}|| exit 1;                                     \
+	fi
+
+libintllite : $(LIBINTLLITE_LIB)
+
+$(LIBINTLLITE_LIB): $(LIBINTLLITE_TIMESTAMP)
+	+ @REFRESH=0;                                                                \
+	if [ ! -e ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                                    \
+		echo "${LIBINTLLITE_TIMESTAMP_INT} doesn't exist";                             \
+		REFRESH=1;                                                             \
+	fi;                                                                        \
+	if [ ${LIBINTLLITE_TIMESTAMP} -nt ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                    \
+		REFRESH=1;                                                             \
+	fi;                                                                        \
+	if [ $$REFRESH -ne 0 ] ; then                                              \
+	echo "changed timestamp for libintl-lite detected building...";                     \
+	cd ${LIBINTLLITE_DIR};                                                             \
+	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
+		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
+	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+	touch ${LIBINTLLITE_TIMESTAMP};                                                    \
+	touch ${LIBINTLLITE_TIMESTAMP_INT};                                                \
+	else                                                                       \
+		echo "nothing to be done for libintl-lite";                        \
+	fi
+
+clean_libintllite :
+	$(RM) -rf ${LIBINTLLITE_DIR}
+	
+	
 $(OPENSSL_TIMESTAMP) : openssl_download
 	@LAST_MODIF=$$(find ${OPENSSL_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
@@ -688,7 +738,7 @@ clean_sqlite3:
 
 $(ASSETS_TIMESTAMP) : $(IRRLICHT_LIB)
 	@mkdir -p ${ANDR_ROOT}/deps;                                                \
-	for DIRNAME in {builtin,client,doc,fonts,games,mods,po,textures}; do        \
+	for DIRNAME in {builtin,client,doc,fonts,games,mods,locale,textures}; do        \
 		LAST_MODIF=$$(find ${PROJ_ROOT}/${DIRNAME} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 		if [ $$(basename $$LAST_MODIF) != "timestamp" ]; then               \
 			touch ${PROJ_ROOT}/${DIRNAME}/timestamp;                   \
@@ -726,27 +776,33 @@ assets : $(ASSETS_TIMESTAMP)
 	if [ $$REFRESH -ne 0 ] ; then                                              \
 	echo "assets changed, refreshing...";                                      \
 	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${APP_ROOT}/assets/Minetest;                                      \
-	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/Minetest;         \
-	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/Minetest;                    \
-	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/Minetest;                    \
-	mkdir -p ${APP_ROOT}/assets/Minetest/client;                                  \
-	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/Minetest/client;      \
-	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/Minetest/LICENSE.txt;  \
-	mkdir -p ${APP_ROOT}/assets/Minetest/fonts;                                   \
-	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/Minetest/fonts/;         \
-	mkdir -p ${APP_ROOT}/assets/Minetest/games;                                   \
+	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
+	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
+	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
+	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
+	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
+	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
+	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/eidy/client;      \
+	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/eidy/LICENSE.txt;  \
+	mkdir -p ${APP_ROOT}/assets/eidy/fonts;                                   \
+	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/eidy/fonts/;         \
+	mkdir -p ${APP_ROOT}/assets/eidy/games;                                   \
 	for game in ${GAMES_TO_COPY}; do                                           \
-	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/Minetest/games/;    \
+	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
 	done;                                                                      \
-	mkdir -p ${APP_ROOT}/assets/Minetest/mods;                                    \
+	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
+	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
 	for mod in ${MODS_TO_COPY}; do                                             \
-	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/Minetest/mods/;       \
+	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/Minetest;                         \
-	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/Minetest;                   \
-	mkdir -p ${APP_ROOT}/assets/Minetest/media;                                \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/Minetest/media;     \
+	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/eidy;                         \
+	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
+	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
+	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
+	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
+	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/eidy;					\
+	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
+	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/eidy/media;     \
 	cd ${APP_ROOT}/assets ||  exit 1;                                          \
 	find . -name "timestamp" -exec rm {} \; ;                                  \
 	find . -name "*.blend" -exec rm {} \; ;                                    \
@@ -755,7 +811,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L Minetest > filelist.txt;                                             \
+	find -L eidy | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
@@ -765,7 +821,7 @@ clean_assets :
 	@$(RM) -r assets
 
 apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB) $(LEVELDB_TARGET)       \
-	$(OPENAL_LIB) $(OGG_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
+	$(OPENAL_LIB) $(LIBINTLLITE_LIB) $(OGG_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h sqlite3_download
 	+ @${ANDROID_NDK}/ndk-build NDK_MODULE_PATH=${NDK_MODULE_PATH}             \
 		GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}      \
@@ -804,7 +860,7 @@ clean_apk :
 clean_all :
 	@$(MAKE) clean_apk;                                                        \
 	$(MAKE) clean_assets clean_iconv clean_irrlicht clean_leveldb clean_curl   \
-	clean_openssl clean_openal clean_ogg clean_gmp;                            \
+	clean_openssl clean_libintllite_clean openal clean_ogg clean_gmp;                            \
 	sleep 1;                                                                   \
 	$(RM) -r gen libs obj deps bin Debug and_env
 
