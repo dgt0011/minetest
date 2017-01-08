@@ -106,12 +106,13 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("client_unload_unused_data_timeout", "600");
 	settings->setDefault("client_mapblock_limit", "5000");
 	settings->setDefault("enable_fog", "true");
+	settings->setDefault("fog_start", "0.4");
 	settings->setDefault("fov", "72");
 	settings->setDefault("view_bobbing", "true");
 	settings->setDefault("leaves_style", "fancy");
 	settings->setDefault("connected_glass", "false");
 	settings->setDefault("smooth_lighting", "true");
-	settings->setDefault("display_gamma", "1.8");
+	settings->setDefault("display_gamma", "2.2");
 	settings->setDefault("texture_path", "");
 	settings->setDefault("shader_path", "");
 	settings->setDefault("video_driver", "opengl");
@@ -272,7 +273,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("profiler_print_interval", "0");
 	settings->setDefault("enable_mapgen_debug_info", "false");
 	settings->setDefault("active_object_send_range_blocks", "3");
-	settings->setDefault("active_block_range", "2");
+	settings->setDefault("active_block_range", "3");
 	//settings->setDefault("max_simultaneous_block_sends_per_client", "1");
 	// This causes frametime jitter on client side, or does it?
 	settings->setDefault("max_simultaneous_block_sends_per_client", "10");
@@ -302,7 +303,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("emergequeue_limit_diskonly", "32");
 	settings->setDefault("emergequeue_limit_generate", "32");
 	settings->setDefault("num_emerge_threads", "1");
-	settings->setDefault("secure.enable_security", "true");
+	settings->setDefault("secure.enable_security", "false");
 	settings->setDefault("secure.trusted_mods", "");
 	settings->setDefault("secure.http_mods", "");
 
@@ -326,7 +327,7 @@ void set_default_settings(Settings *settings)
 	settings->setDefault("liquid_update", "1.0");
 
 	//mapgen stuff
-	settings->setDefault("mg_name", "v6");
+	settings->setDefault("mg_name", "v7");
 	settings->setDefault("water_level", "1");
 	settings->setDefault("chunksize", "5");
 	settings->setDefault("mg_flags", "dungeons");

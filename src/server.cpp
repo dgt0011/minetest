@@ -1076,8 +1076,7 @@ PlayerSAO* Server::StageTwoClientInit(u16 peer_id)
 	}
 	m_clients.unlock();
 
-	RemotePlayer *player =
-		static_cast<RemotePlayer*>(m_env->getPlayer(playername.c_str()));
+	RemotePlayer *player = m_env->getPlayer(playername.c_str());
 
 	// If failed, cancel
 	if ((playersao == NULL) || (player == NULL)) {
@@ -1113,7 +1112,7 @@ PlayerSAO* Server::StageTwoClientInit(u16 peer_id)
 	SendPlayerHPOrDie(playersao);
 
 	// Send Breath
-	SendPlayerBreath(peer_id);
+	SendPlayerBreath(playersao);
 
 	// Show death screen if necessary
 	if (playersao->isDead())
@@ -1857,14 +1856,13 @@ void Server::SendPlayerHP(u16 peer_id)
 	playersao->m_messages_out.push(aom);
 }
 
-void Server::SendPlayerBreath(u16 peer_id)
+void Server::SendPlayerBreath(PlayerSAO *sao)
 {
 	DSTACK(FUNCTION_NAME);
-	PlayerSAO *playersao = getPlayerSAO(peer_id);
-	assert(playersao);
+	assert(sao);
 
-	m_script->player_event(playersao, "breath_changed");
-	SendBreath(peer_id, playersao->getBreath());
+	m_script->player_event(sao, "breath_changed");
+	SendBreath(sao->getPeerID(), sao->getBreath());
 }
 
 void Server::SendMovePlayer(u16 peer_id)
@@ -2557,15 +2555,14 @@ void Server::RespawnPlayer(u16 peer_id)
 	playersao->setHP(PLAYER_MAX_HP);
 	playersao->setBreath(PLAYER_MAX_BREATH);
 
-	SendPlayerHP(peer_id);
-	SendPlayerBreath(peer_id);
-
 	bool repositioned = m_script->on_respawnplayer(playersao);
-	if(!repositioned){
+	if (!repositioned) {
 		v3f pos = findSpawnPos();
 		// setPos will send the new position to client
 		playersao->setPos(pos);
 	}
+
+	SendPlayerHP(peer_id);
 }
 
 

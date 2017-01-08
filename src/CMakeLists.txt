@@ -445,11 +445,14 @@ set(common_SRCS
 	porting.cpp
 	profiler.cpp
 	quicktune.cpp
+	reflowscan.cpp
 	remoteplayer.cpp
+	raycast.cpp
 	rollback.cpp
 	rollback_interface.cpp
 	serialization.cpp
 	server.cpp
+	serverenvironment.cpp
 	serverlist.cpp
 	serverobject.cpp
 	settings.cpp
@@ -458,6 +461,7 @@ set(common_SRCS
 	staticobject.cpp
 	subgame.cpp
 	terminal_chat_console.cpp
+	tileanimation.cpp
 	tool.cpp
 	treegen.cpp
 	version.cpp
@@ -505,6 +509,7 @@ set(client_SRCS
 	${client_irrlicht_changes_SRCS}
 	camera.cpp
 	client.cpp
+	clientenvironment.cpp
 	clientmap.cpp
 	clientmedia.cpp
 	clientobject.cpp
@@ -688,6 +693,28 @@ if(BUILD_SERVER)
 	endif()
 endif(BUILD_SERVER)
 
+# Blacklisted locales that don't work.
+# see issue #4638
+set(GETTEXT_BLACKLISTED_LOCALES
+	be
+	he
+	ko
+	ky
+	zh_CN
+	zh_TW
+)
+
+option(APPLY_LOCALE_BLACKLIST "Use a blacklist to avoid broken locales" TRUE)
+
+if (GETTEXT_FOUND AND APPLY_LOCALE_BLACKLIST)
+	set(GETTEXT_USED_LOCALES "")
+	foreach(LOCALE ${GETTEXT_AVAILABLE_LOCALES})
+		if (NOT ";${GETTEXT_BLACKLISTED_LOCALES};" MATCHES ";${LOCALE};")
+			list(APPEND GETTEXT_USED_LOCALES ${LOCALE})
+		endif()
+	endforeach()
+	message(STATUS "Locale blacklist applied; Locales used: ${GETTEXT_USED_LOCALES}")
+endif()
 
 # Set some optimizations and tweaks
 
@@ -806,7 +833,7 @@ if(BUILD_CLIENT)
 	endif()
 
 	if(USE_GETTEXT)
-		foreach(LOCALE ${GETTEXT_AVAILABLE_LOCALES})
+		foreach(LOCALE ${GETTEXT_USED_LOCALES})
 			set_mo_paths(MO_BUILD_PATH MO_DEST_PATH ${LOCALE})
 			set(MO_BUILD_PATH "${MO_BUILD_PATH}/${PROJECT_NAME}.mo")
 			install(FILES ${MO_BUILD_PATH} DESTINATION ${MO_DEST_PATH})
@@ -835,7 +862,7 @@ endif()
 if (USE_GETTEXT)
 	set(MO_FILES)
 
-	foreach(LOCALE ${GETTEXT_AVAILABLE_LOCALES})
+	foreach(LOCALE ${GETTEXT_USED_LOCALES})
 		set(PO_FILE_PATH "${GETTEXT_PO_PATH}/${LOCALE}/${PROJECT_NAME}.po")
 		set_mo_paths(MO_BUILD_PATH MO_DEST_PATH ${LOCALE})
 		set(MO_FILE_PATH "${MO_BUILD_PATH}/${PROJECT_NAME}.mo")

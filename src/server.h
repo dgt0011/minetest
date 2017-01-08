@@ -31,7 +31,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "subgame.h"
 #include "util/numeric.h"
 #include "util/thread.h"
-#include "environment.h"
+#include "util/basic_macros.h"
+#include "serverenvironment.h"
 #include "chat_interface.h"
 #include "clientiface.h"
 #include "remoteplayer.h"
@@ -40,8 +41,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <list>
 #include <map>
 #include <vector>
-
-#define PP(x) "("<<(x).X<<","<<(x).Y<<","<<(x).Z<<")"
 
 class IWritableItemDefManager;
 class IWritableNodeDefManager;
@@ -181,7 +180,6 @@ public:
 	void handleCommand_InventoryAction(NetworkPacket* pkt);
 	void handleCommand_ChatMessage(NetworkPacket* pkt);
 	void handleCommand_Damage(NetworkPacket* pkt);
-	void handleCommand_Breath(NetworkPacket* pkt);
 	void handleCommand_Password(NetworkPacket* pkt);
 	void handleCommand_PlayerItem(NetworkPacket* pkt);
 	void handleCommand_Respawn(NetworkPacket* pkt);
@@ -300,6 +298,7 @@ public:
 	IWritableNodeDefManager* getWritableNodeDefManager();
 	IWritableCraftDefManager* getWritableCraftDefManager();
 
+	const std::vector<ModSpec> &getMods() const { return m_mods; }
 	const ModSpec* getModSpec(const std::string &modname) const;
 	void getModNames(std::vector<std::string> &modlist);
 	std::string getBuiltinLuaPath();
@@ -360,7 +359,7 @@ public:
 	void printToConsoleOnly(const std::string &text);
 
 	void SendPlayerHPOrDie(PlayerSAO *player);
-	void SendPlayerBreath(u16 peer_id);
+	void SendPlayerBreath(PlayerSAO *sao);
 	void SendInventory(PlayerSAO* playerSAO);
 	void SendMovePlayer(u16 peer_id);
 

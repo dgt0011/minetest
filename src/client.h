@@ -21,7 +21,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define CLIENT_HEADER
 
 #include "network/connection.h"
-#include "environment.h"
+#include "clientenvironment.h"
 #include "irrlichttypes_extrabloated.h"
 #include "threading/mutex.h"
 #include <ostream>
@@ -450,14 +450,6 @@ public:
 	/* InventoryManager interface */
 	Inventory* getInventory(const InventoryLocation &loc);
 	void inventoryAction(InventoryAction *a);
-
-	// Gets closest object pointed by the shootline
-	// Returns NULL if not found
-	ClientActiveObject * getSelectedActiveObject(
-			f32 max_d,
-			v3f from_pos_f_on_map,
-			core::line3d<f32> shootline_on_map
-	);
 
 	const std::list<std::string> &getConnectedPlayerNames()
 	{

@@ -28,6 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <vector>
 
 class INodeDefManager;
+class Map;
 
 /*
 	Naming scheme:
@@ -142,11 +143,6 @@ struct MapNode
 	MapNode()
 	{ }
 
-	MapNode(const MapNode & n)
-	{
-		*this = n;
-	}
-
 	MapNode(content_t content, u8 a_param1=0, u8 a_param2=0)
 		: param0(content),
 		  param1(a_param1),
@@ -245,6 +241,13 @@ struct MapNode
 	v3s16 getWallMountedDir(INodeDefManager *nodemgr) const;
 
 	void rotateAlongYAxis(INodeDefManager *nodemgr, Rotation rot);
+
+	/*!
+	 * Checks which neighbors does this node connect to.
+	 *
+	 * \param p coordinates of the node
+	 */
+	u8 getNeighbors(v3s16 p, Map *map);
 
 	/*
 		Gets list of node boxes (used for rendering (NDT_NODEBOX))

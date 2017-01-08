@@ -20,6 +20,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <cmath>
 #include <IFileSystem.h>
 #include "threading/mutex_auto_lock.h"
 #include "util/auth.h"
@@ -52,6 +53,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "database-sqlite3.h"
 #include "serialization.h"
 #include "guiscalingfilter.h"
+#include "raycast.h"
 
 extern gui::IGUIEnvironment* guienv;
 
@@ -498,9 +500,10 @@ void Client::step(float dtime)
 				m_client_event_queue.push(event);
 			}
 		}
-		else if(event.type == CEE_PLAYER_BREATH) {
-				u16 breath = event.player_breath.amount;
-				sendBreath(breath);
+		// Protocol v29 or greater obsoleted this event
+		else if (event.type == CEE_PLAYER_BREATH && m_proto_ver < 29) {
+			u16 breath = event.player_breath.amount;
+			sendBreath(breath);
 		}
 	}
 
@@ -939,7 +942,8 @@ void writePlayerPos(LocalPlayer *myplayer, ClientMap *clientMap, NetworkPacket *
 	u32 keyPressed   = myplayer->keyPressed;
 	// scaled by 80, so that pi can fit into a u8
 	u8 fov           = clientMap->getCameraFov() * 80;
-	u8 wanted_range  = clientMap->getControl().wanted_range / MAP_BLOCKSIZE;
+	u8 wanted_range  = MYMIN(255,
+			std::ceil(clientMap->getControl().wanted_range / MAP_BLOCKSIZE));
 
 	v3s32 position(pf.X, pf.Y, pf.Z);
 	v3s32 speed(sf.X, sf.Y, sf.Z);
@@ -951,8 +955,8 @@ void writePlayerPos(LocalPlayer *myplayer, ClientMap *clientMap, NetworkPacket *
 		[12+12] s32 pitch*100
 		[12+12+4] s32 yaw*100
 		[12+12+4+4] u32 keyPressed
-		[12+12+4+4+1] u8 fov*80
-		[12+12+4+4+4+1] u8 wanted_range / MAP_BLOCKSIZE
+		[12+12+4+4+4] u8 fov*80
+		[12+12+4+4+4+1] u8 ceil(wanted_range / MAP_BLOCKSIZE)
 	*/
 	*pkt << position << speed << pitch << yaw << keyPressed;
 	*pkt << fov << wanted_range;
@@ -1268,6 +1272,10 @@ void Client::sendBreath(u16 breath)
 {
 	DSTACK(FUNCTION_NAME);
 
+	// Protocol v29 make this obsolete
+	if (m_proto_ver >= 29)
+		return;
+
 	NetworkPacket pkt(TOSERVER_BREATH, sizeof(u16));
 	pkt << breath;
 	Send(&pkt);
@@ -1338,7 +1346,7 @@ void Client::sendPlayerPos()
 
 	assert(myplayer->peer_id == our_peer_id);
 
-	NetworkPacket pkt(TOSERVER_PLAYERPOS, 12 + 12 + 4 + 4 + 4);
+	NetworkPacket pkt(TOSERVER_PLAYERPOS, 12 + 12 + 4 + 4 + 4 + 1 + 1);
 
 	writePlayerPos(myplayer, &map, &pkt);
 
@@ -1491,44 +1499,6 @@ void Client::inventoryAction(InventoryAction *a)
 
 	// Remove it
 	delete a;
-}
-
-ClientActiveObject * Client::getSelectedActiveObject(
-		f32 max_d,
-		v3f from_pos_f_on_map,
-		core::line3d<f32> shootline_on_map
-	)
-{
-	std::vector<DistanceSortedActiveObject> objects;
-
-	m_env.getActiveObjects(from_pos_f_on_map, max_d, objects);
-
-	// Sort them.
-	// After this, the closest object is the first in the array.
-	std::sort(objects.begin(), objects.end());
-
-	for(unsigned int i=0; i<objects.size(); i++)
-	{
-		ClientActiveObject *obj = objects[i].obj;
-
-		aabb3f *selection_box = obj->getSelectionBox();
-		if(selection_box == NULL)
-			continue;
-
-		v3f pos = obj->getPosition();
-
-		aabb3f offsetted_box(
-				selection_box->MinEdge + pos,
-				selection_box->MaxEdge + pos
-		);
-
-		if(offsetted_box.intersectsWithLine(shootline_on_map))
-		{
-			return obj;
-		}
-	}
-
-	return NULL;
 }
 
 float Client::getAnimationTime()
