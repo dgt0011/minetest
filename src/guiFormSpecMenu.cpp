@@ -2999,7 +2999,7 @@ bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 			if (label == "") {
 				label = "text";
 			}
-			message += gettext(label) + ":";
+			message += strgettext(label) + ":";
 
 			/* single line text input */
 			int type = 2;

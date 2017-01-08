@@ -126,7 +126,7 @@ void init_gettext(const char *path, const std::string &configured_language,
 #ifndef _WIN32
 		// Add user specified locale to environment
 		setenv("LANGUAGE", configured_language.c_str(), 1);
-
+ 
 		// Reload locale with changed environment
 		setlocale(LC_ALL, "");
 #elif defined(_MSC_VER)
@@ -218,12 +218,16 @@ void init_gettext(const char *path, const std::string &configured_language,
 #endif
 
 	static std::string name = lowercase(PROJECT_NAME);
-	bindtextdomain(name.c_str(), path);
+	if (!bindtextdomain(name.c_str(), path))
+	{
+		errorstream << "Error : Failed to bind text Domain : " << name << " with path :" << path << std::endl;
+	}
+	errorstream << "Information : Setting Text Domain : " << name << " with path :" << path << std::endl;
 	textdomain(name.c_str());
 
 #if defined(_WIN32)
 	// Set character encoding for Win32
-	char *tdomain = textdomain( (char *) NULL );
+	const char *tdomain = textdomain( (char *) NULL );
 	if( tdomain == NULL )
 	{
 		errorstream << "Warning: domainname parameter is the null pointer" <<

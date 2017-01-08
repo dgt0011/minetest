@@ -94,6 +94,12 @@ OGG_TIMESTAMP = $(OGG_DIR)timestamp
 OGG_TIMESTAMP_INT = $(ANDR_ROOT)/deps/ogg_timestamp
 OGG_URL_GIT = https://github.com/vincentjames501/libvorbis-libogg-android
 
+LIBINTLLITE_DIR = $(ANDR_ROOT)/deps/libintl-lite
+LIBINTLLITE_LIB = $(LIBINTLLITE_DIR)libs/$(TARGET_ABI)/libintl.a
+LIBINTLLITE_TIMESTAMP = $(LIBINTLLITE_DIR)timestamp
+LIBINTLLITE_TIMESTAMP_INT = $(ANDR_ROOT)/deps/libintllite_timestamp
+LIBINTLLITE_URL_GIT = https://github.com/eidy/libintl-lite
+
 IRRLICHT_REVISION = 5122
 IRRLICHT_DIR = $(ANDR_ROOT)/deps/irrlicht/
 IRRLICHT_LIB = $(IRRLICHT_DIR)lib/Android/libIrrlicht.a
@@ -159,7 +165,7 @@ endif
 	$(ASSETS_TIMESTAMP) $(LEVELDB_TIMESTAMP) \
 	$(OPENAL_TIMESTAMP) $(OGG_TIMESTAMP) \
 	$(IRRLICHT_TIMESTAMP) $(CURL_TIMESTAMP) \
-	$(OPENSSL_TIMESTAMP) \
+	$(OPENSSL_TIMESTAMP) $(LIBINTLLITE_TIMESTAMP) \
 	$(ANDR_ROOT)/jni/src/android_version.h \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h
 
@@ -288,6 +294,51 @@ $(OGG_LIB): $(OGG_TIMESTAMP)
 clean_ogg :
 	$(RM) -rf ${OGG_DIR}
 
+$(LIBINTLLITE_TIMESTAMP) : libintllite_download
+	@LAST_MODIF=$$(find ${LIBINTLLITE_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
+	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
+		touch ${LIBINTLLITE_TIMESTAMP};                                                \
+	fi
+
+libintllite_download :
+	@if [ ! -d ${LIBINTLLITE_DIR} ] ; then                                             \
+		echo "libintllite sources missing, downloading...";                            \
+		mkdir -p ${ANDR_ROOT}/deps;                                            \
+		cd ${ANDR_ROOT}/deps ;                                                 \
+		git clone ${LIBINTLLITE_URL_GIT}|| exit 1;                                     \
+	fi
+
+libintllite : $(LIBINTLLITE_LIB)
+
+$(LIBINTLLITE_LIB): $(LIBINTLLITE_TIMESTAMP)
+	+ @REFRESH=0;                                                                \
+	if [ ! -e ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                                    \
+		echo "${LIBINTLLITE_TIMESTAMP_INT} doesn't exist";                             \
+		REFRESH=1;                                                             \
+	fi;                                                                        \
+	if [ ${LIBINTLLITE_TIMESTAMP} -nt ${LIBINTLLITE_TIMESTAMP_INT} ] ; then                    \
+		REFRESH=1;                                                             \
+	fi;                                                                        \
+	if [ $$REFRESH -ne 0 ] ; then                                              \
+	echo "changed timestamp for libintl-lite detected building...";                     \
+	cd ${LIBINTLLITE_DIR};                                                             \
+	${ANDROID_NDK}/ndk-build NDEBUG=${NDEBUG}                                  \
+		NDK_MODULE_PATH=${NDK_MODULE_PATH}                                     \
+	APP_ABI=${TARGET_ABI} APP_PLATFORM=${APP_PLATFORM}                         \
+	TARGET_CFLAGS+="${TARGET_CFLAGS_ADDON}"                                    \
+	TARGET_LDFLAGS+="${TARGET_LDFLAGS_ADDON}"                                  \
+	TARGET_CXXFLAGS+="${TARGET_CXXFLAGS_ADDON}" || exit 1;                     \
+	touch ${LIBINTLLITE_TIMESTAMP};                                                    \
+	touch ${LIBINTLLITE_TIMESTAMP_INT};                                                \
+	else                                                                       \
+		echo "nothing to be done for libintl-lite";                        \
+	fi
+
+clean_libintllite :
+	$(RM) -rf ${LIBINTLLITE_DIR}
+	
+	
+	
 $(OPENSSL_TIMESTAMP) : openssl_download
 	@LAST_MODIF=$$(find ${OPENSSL_DIR} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 	if [ $$(basename $$LAST_MODIF) != "timestamp" ] ; then                     \
@@ -683,7 +734,7 @@ clean_sqlite3:
 
 $(ASSETS_TIMESTAMP) : $(IRRLICHT_LIB)
 	@mkdir -p ${ANDR_ROOT}/deps;                                                \
-	for DIRNAME in {builtin,client,doc,fonts,games,mods,po,textures}; do        \
+	for DIRNAME in {builtin,client,doc,fonts,games,mods,locale,textures}; do        \
 		LAST_MODIF=$$(find ${PROJ_ROOT}/${DIRNAME} -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "); \
 		if [ $$(basename $$LAST_MODIF) != "timestamp" ]; then               \
 			touch ${PROJ_ROOT}/${DIRNAME}/timestamp;                   \
@@ -740,7 +791,7 @@ assets : $(ASSETS_TIMESTAMP)
 	for mod in ${MODS_TO_COPY}; do                                             \
 	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/po ${APP_ROOT}/assets/eidy;                         \
+	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/eidy;                         \
 	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
@@ -766,7 +817,7 @@ clean_assets :
 	@$(RM) -r assets
 
 apk: local.properties assets $(ICONV_LIB) $(IRRLICHT_LIB) $(CURL_LIB) $(GMP_LIB) $(LEVELDB_TARGET)       \
-	$(OPENAL_LIB) $(OGG_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
+	$(OPENAL_LIB) $(OGG_LIB) $(LIBINTLLITE_LIB) prep_srcdir $(ANDR_ROOT)/jni/src/android_version.h    \
 	$(ANDR_ROOT)/jni/src/android_version_githash.h sqlite3_download
 	+ @${ANDROID_NDK}/ndk-build NDK_MODULE_PATH=${NDK_MODULE_PATH}             \
 	GPROF=${GPROF} APP_ABI=${TARGET_ABI} HAVE_LEVELDB=${HAVE_LEVELDB}          \
