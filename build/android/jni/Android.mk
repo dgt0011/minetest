@@ -124,6 +124,7 @@ LOCAL_SRC_FILES := \
 		jni/src/cavegen.cpp                       \
 		jni/src/chat.cpp                          \
 		jni/src/client.cpp                        \
+		jni/src/clientenvironment.cpp                   \
 		jni/src/clientiface.cpp                   \
 		jni/src/clientmap.cpp                     \
 		jni/src/clientmedia.cpp                   \
