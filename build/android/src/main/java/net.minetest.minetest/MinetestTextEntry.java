@@ -10,7 +10,9 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnKeyListener;
+import android.view.WindowManager;
 import android.widget.EditText;
+
 
 public class MinetestTextEntry extends Activity {
 	public AlertDialog mTextInputDialog;
@@ -74,7 +76,8 @@ public class MinetestTextEntry extends Activity {
 		
 		mTextInputDialog = builder.create();
 		mTextInputDialog.show();
-		// request keyboard   
+
+		// request keyboard
 		mTextInputDialog.getWindow().setSoftInputMode (WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
 	}
 	
