@@ -4,6 +4,8 @@ import android.app.NativeActivity;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -15,8 +17,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import android.content.res.AssetFileDescriptor;
+import java.io.OutputStreamWriter;
 
 import android.speech.tts.TextToSpeech;
 import java.util.Locale;
@@ -35,6 +37,32 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessageReturnValue = "";
 		makeFullScreen();
 		initSpeech();	
+		writeSystemInfo();
+	}
+	
+	private void writeSystemInfo()
+	{
+		
+		String currentKeyboard =  Settings.Secure.getString(getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
+
+		String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+				+ "/eidy/android.info";
+
+		try {
+
+			File myFile = new File(filename);
+			myFile.createNewFile();
+			FileOutputStream fOut = new FileOutputStream(myFile);
+			OutputStreamWriter myOutWriter = new OutputStreamWriter(fOut);
+			myOutWriter.append("Keyboard = \"" + currentKeyboard + "\"");
+			myOutWriter.append("\n");
+			myOutWriter.close();
+			fOut.close();
+			
+        } catch (Exception e) {
+              Log.e("error", "Could not create " + filename + " : ",e);
+        } 
+
 	}
 	
 	private Locale GetLocale()
