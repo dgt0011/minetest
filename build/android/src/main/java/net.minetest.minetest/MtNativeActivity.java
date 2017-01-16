@@ -64,6 +64,40 @@ public class MtNativeActivity extends NativeActivity {
         } 
 
 	}
+
+	private String getSetting(String settingName)
+	{
+
+
+		try
+		{
+			InputStream is = getAssets().open("eidy/minetest.conf");
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+
+			String line = reader.readLine();
+			while (line != null)
+			{
+
+				line = reader.readLine();
+				if(line.startsWith(settingName + " =") || line.startsWith(settingName + " ="))
+				{
+					return line.split("=")[1].trim();
+				}
+
+			}
+			is.close();
+		}
+		catch (IOException e1)
+		{
+			Log.e("error","Error trying to retrieve language from minetest.conf");
+			e1.printStackTrace();
+		}
+		finally
+		{
+			return "";
+		}
+
+	}
 	
 	private Locale GetLocale()
 	{	 
@@ -99,26 +133,59 @@ public class MtNativeActivity extends NativeActivity {
 	
 	private void initSpeech()
 	{
+		String speechEngine = getSetting("speech_engine");
 
-		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener()
+ 		if (speechEngine != "")
+		{
+			try
+			{
+				t1 = new TextToSpeech(this, new TextToSpeech.OnInitListener()
+				{
+					@Override
+					public void onInit(int status)
+					{
+						if (status == TextToSpeech.SUCCESS)
+						{
+							int result = t1.setLanguage(GetLocale());
+							if (result == TextToSpeech.LANG_MISSING_DATA ||
+									result == TextToSpeech.LANG_NOT_SUPPORTED)
+							{
+								Log.e("error", "This Language is not supported");
+							}
+
+						} else
+							Log.e("error", "Initialisation Failed!");
+					}
+
+				}, speechEngine); // eg "edu.cmu.cs.speech.tts.flite"
+			} catch (Exception e)
+			{
+				Log.e("error", "Sppech Engine " + speechEngine + " Failed!");
+			}
+		}
+		else
+		{
+		t1 = new TextToSpeech(this, new TextToSpeech.OnInitListener()
 		{
 			@Override
 			public void onInit(int status)
 			{
-				if(status == TextToSpeech.SUCCESS){
-					int result=t1.setLanguage(GetLocale());
-					if(result==TextToSpeech.LANG_MISSING_DATA ||
-							result==TextToSpeech.LANG_NOT_SUPPORTED){
+				if (status == TextToSpeech.SUCCESS)
+				{
+					int result = t1.setLanguage(GetLocale());
+					if (result == TextToSpeech.LANG_MISSING_DATA ||
+							result == TextToSpeech.LANG_NOT_SUPPORTED)
+					{
 						Log.e("error", "This Language is not supported");
 					}
 
-				}
-				else
+				} else
 					Log.e("error", "Initialisation Failed!");
 			}
 
-		}, "edu.cmu.cs.speech.tts.flite");
-	
+		});
+
+
 	}
 	
 	public void speakText(String someText) {
