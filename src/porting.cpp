@@ -22,6 +22,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 	See comments in porting.h
 */
+ 
 
 #include "porting.h"
 
@@ -477,6 +478,7 @@ bool setSystemPaths()
 
 	return true;
 }
+ 
 
 
 //// Mac OS X
@@ -630,8 +632,21 @@ void initializePaths()
 	}
 #  endif
 	if (!found_localedir) {
-		warningstream << "Couldn't find a locale directory!" << std::endl;
+		errorstream << "Couldn't find a locale directory! Trying GetDataPath" << std::endl;
+
+		path_locale = getDataPath("locale");
+		if (fs::PathExists(path_locale)) {
+			found_localedir = true;
+		}
+
+		if (!found_localedir) {
+			errorstream << "Still couldn't find a locale directory! : " << path_locale << std::endl;
+		}
 	}
+
+
+
+
 #endif  // USE_GETTEXT
 }
 
