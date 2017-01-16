@@ -3461,7 +3461,7 @@ void Game::processClientEvents(CameraOrientation *cam, float *damage_flash)
 			std::string command;
 			// 'espeak -m --path="'..speak.binpath..'" -s 125 -v ' .. LANG ..  '+f5 "' .. stufftosay ..'"' 
 			
-			command = "start espeak --path=\".\" -s 125 -v " + lang + "+f5 \"" + *event.speak_text.text + "\"";
+			command = "start /b espeak --path=\".\" -s 125 -v " + lang + "+f5 \"" + *event.speak_text.text + "\"";
 			system(command.c_str());
 #endif
 
