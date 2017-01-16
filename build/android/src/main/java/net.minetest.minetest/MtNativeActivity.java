@@ -99,22 +99,25 @@ public class MtNativeActivity extends NativeActivity {
 	
 	private void initSpeech()
 	{
-		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+
+		t1=new TextToSpeech(this, new TextToSpeech.OnInitListener()
+		{
 			@Override
-            public void onInit(int status) {
-                
-                if(status == TextToSpeech.SUCCESS){
-                    int result=t1.setLanguage(GetLocale());
-                    if(result==TextToSpeech.LANG_MISSING_DATA ||
-                            result==TextToSpeech.LANG_NOT_SUPPORTED){
-                        Log.e("error", "This Language is not supported");
-                    }
-                   
-                }
-                else
-                    Log.e("error", "Initialisation Failed!");
-            }
-        });
+			public void onInit(int status)
+			{
+				if(status == TextToSpeech.SUCCESS){
+					int result=t1.setLanguage(GetLocale());
+					if(result==TextToSpeech.LANG_MISSING_DATA ||
+							result==TextToSpeech.LANG_NOT_SUPPORTED){
+						Log.e("error", "This Language is not supported");
+					}
+
+				}
+				else
+					Log.e("error", "Initialisation Failed!");
+			}
+
+		}, "edu.cmu.cs.speech.tts.flite");
 	
 	}
 	
