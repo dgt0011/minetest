@@ -165,26 +165,26 @@ public class MtNativeActivity extends NativeActivity {
 		}
 		else
 		{
-		t1 = new TextToSpeech(this, new TextToSpeech.OnInitListener()
-		{
-			@Override
-			public void onInit(int status)
+			t1 = new TextToSpeech(this, new TextToSpeech.OnInitListener()
 			{
-				if (status == TextToSpeech.SUCCESS)
+				@Override
+				public void onInit(int status)
 				{
-					int result = t1.setLanguage(GetLocale());
-					if (result == TextToSpeech.LANG_MISSING_DATA ||
-							result == TextToSpeech.LANG_NOT_SUPPORTED)
+					if (status == TextToSpeech.SUCCESS)
 					{
-						Log.e("error", "This Language is not supported");
-					}
+						int result = t1.setLanguage(GetLocale());
+						if (result == TextToSpeech.LANG_MISSING_DATA ||
+								result == TextToSpeech.LANG_NOT_SUPPORTED)
+						{
+							Log.e("error", "This Language is not supported");
+						}
 
-				} else
-					Log.e("error", "Initialisation Failed!");
-			}
+					} else
+						Log.e("error", "Initialisation Failed!");
+				}
 
-		});
-
+			});
+		}
 
 	}
 	
