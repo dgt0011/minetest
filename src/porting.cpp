@@ -156,8 +156,7 @@ std::string path_cache = path_user + DIR_DELIM + "cache";
 std::string getAsset(const std::string &assetPath)
 {
 		// Manage disk file
-		std::string base_path = porting::path_share + DIR_DELIM + assetPath;
-		std::string testpath = base_path + DIR_DELIM + assetPath;
+		std::string testpath = porting::path_share + DIR_DELIM + assetPath;
 		 
 #ifdef __ANDROID__
 		
