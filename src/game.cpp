@@ -4537,7 +4537,10 @@ inline void Game::limitFps(FpsControl *fps_timings, f32 *dtime)
 void Game::showOverlayMessage(const wchar_t *msg, float dtime,
 		int percent, bool draw_clouds)
 {
-	draw_load_screen(msg, device, guienv, dtime, percent, draw_clouds);
+	std::wstring altmsg = L":)"; // A quick hack as alternative to internationalisation
+  
+	draw_load_screen(altmsg.c_str(), device, guienv, dtime, percent, draw_clouds);
+	 
 	delete[] msg;
 }
 
