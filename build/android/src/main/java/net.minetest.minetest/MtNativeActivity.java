@@ -111,9 +111,11 @@ public class MtNativeActivity extends NativeActivity {
 			{
 			 
 				line = reader.readLine();
-				if (line.startsWith("language=")) 
+				if (line.startsWith("language=") || line.startsWith("language= "))
 				{
-					return new Locale(line.split("=")[1].trim());
+					Log.e("warning","Locale found and set : " + line);
+					return new Locale("sw");
+					// return new Locale(line.split("=")[1].trim());
 				}
 				
 			}
@@ -126,7 +128,8 @@ public class MtNativeActivity extends NativeActivity {
 		}
 		finally
 		{
-			return Locale.US;
+			Log.e("warning", "TTS - Default Locale Selected!");
+			return Locale.getDefault();
 		}
 	}
 	
@@ -154,13 +157,13 @@ public class MtNativeActivity extends NativeActivity {
 							}
 
 						} else
-							Log.e("error", "Initialisation Failed!");
+							Log.e("error", "Speech initialisation Failed!");
 					}
 
 				}, speechEngine); // eg "edu.cmu.cs.speech.tts.flite"
 			} catch (Exception e)
 			{
-				Log.e("error", "Sppech Engine " + speechEngine + " Failed!");
+				Log.e("error", "Speech Engine " + speechEngine + " Failed!");
 			}
 		}
 		else
@@ -180,7 +183,7 @@ public class MtNativeActivity extends NativeActivity {
 						}
 
 					} else
-						Log.e("error", "Initialisation Failed!");
+						Log.e("error", "Default Initialisation Failed!");
 				}
 
 			});
@@ -191,6 +194,7 @@ public class MtNativeActivity extends NativeActivity {
 	public void speakText(String someText) {
 		if (t1 != null)
 		{
+			t1.setVoice(new Voice());
 	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
 		}
 	}	
