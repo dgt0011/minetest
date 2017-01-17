@@ -85,7 +85,7 @@ OGG_TIMESTAMP_INT = $(ANDR_ROOT)/deps/ogg_timestamp
 OGG_URL_GIT = https://github.com/vincentjames501/libvorbis-libogg-android
 
 LIBINTLLITE_DIR = $(ANDR_ROOT)/deps/libintl-lite
-LIBINTLLITE_LIB = $(LIBINTLLITE_DIR)libs/$(TARGET_ABI)/libintl.a
+LIBINTLLITE_LIB = $(LIBINTLLITE_DIR)obj/local/$(TARGET_ABI)/libintl.a
 LIBINTLLITE_TIMESTAMP = $(LIBINTLLITE_DIR)timestamp
 LIBINTLLITE_TIMESTAMP_INT = $(ANDR_ROOT)/deps/libintllite_timestamp
 LIBINTLLITE_URL_GIT = https://github.com/eidy/libintl-lite
