@@ -194,7 +194,6 @@ public class MtNativeActivity extends NativeActivity {
 	public void speakText(String someText) {
 		if (t1 != null)
 		{
-			t1.setVoice(new Voice());
 	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
 		}
 	}	
