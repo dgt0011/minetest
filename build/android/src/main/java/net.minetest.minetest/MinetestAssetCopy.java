@@ -206,16 +206,6 @@ public class MinetestAssetCopy extends Activity
                 }
             }
 
-            // add a .nomedia file
-            try
-            {
-                OutputStream dst = new FileOutputStream(baseDir + "eidy/.nomedia");
-                dst.close();
-            } catch (IOException e)
-            {
-                Log.e("MinetestAssetCopy", "Failed to create .nomedia file");
-                e.printStackTrace();
-            }
 
             // Look for Dev Mode Marker File
             File devModeMarker = new File(baseDir + "eidy/.nocopy");
@@ -471,6 +461,21 @@ public class MinetestAssetCopy extends Activity
                         {
                             Log.v("MinetestAssetCopy", "\t created folder: " +
                                     FlashPath);
+
+                            // add a .nomedia file
+                            if (FlashPath.endsWith("/textures"))
+                            {
+                                try
+                                {
+                                    OutputStream dst = new FileOutputStream(FlashPath + "/.nomedia");
+                                    dst.close();
+                                } catch (IOException e)
+                                {
+                                    Log.e("MinetestAssetCopy", "Failed to create .nomedia file");
+                                    e.printStackTrace();
+                                }
+                            }
+
                         }
                     }
 
