@@ -308,7 +308,7 @@ public class MtNativeActivity extends NativeActivity {
 		System.loadLibrary("crypto");
 		System.loadLibrary("gmp");
 		System.loadLibrary("iconv");
-		System.loadLibrary("intl"); //-- Doesn't seem to work...
+		//System.loadLibrary("intl"); //-- Doesn't seem to work...
 
 		// We don't have to load libminetest.so ourselves,
 		// but if we do, we get nicer logcat errors when
