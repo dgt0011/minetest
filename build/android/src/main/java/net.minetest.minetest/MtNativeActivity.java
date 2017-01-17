@@ -14,6 +14,7 @@ import android.net.Uri;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,7 +26,7 @@ import java.util.Locale;
 
 public class MtNativeActivity extends NativeActivity {
 
-    TextToSpeech t1;
+    TextToSpeech t1 = null;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -36,7 +37,6 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessagReturnCode = -1;
 		m_MessageReturnValue = "";
 		makeFullScreen();
-		initSpeech();	
 		writeSystemInfo();
 	}
 	
@@ -65,14 +65,16 @@ public class MtNativeActivity extends NativeActivity {
 
 	}
 
-	private String getSetting(String settingName)
+	private String getConfigSetting(String settingName, String theFile)
 	{
-
-
 		try
 		{
-			InputStream is = getAssets().open("eidy/minetest.conf");
-			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+			String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+					+ "/eidy/" + theFile;
+
+			File file = new File(filename);
+
+			BufferedReader reader = new BufferedReader(new FileReader(file));
 
 			String line = reader.readLine();
 			while (line != null)
@@ -85,7 +87,7 @@ public class MtNativeActivity extends NativeActivity {
 				}
 
 			}
-			is.close();
+			reader.close();
 		}
 		catch (IOException e1)
 		{
@@ -100,43 +102,52 @@ public class MtNativeActivity extends NativeActivity {
 	}
 	
 	private Locale GetLocale()
-	{	 
+	{
+
+		// Look for marker file (Paranoia)
+		String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+				+ "/eidy/.eidysw";
+		File file = new File(filename);
+		if (file.exists() )
+		{
+			return  new Locale("sw");
+		}
+
 		try
 		{
-			InputStream is = getAssets().open("eidy/minetest.conf");
-			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-	
-			String line = reader.readLine();
-			while (line != null)
+			String language = getConfigSetting("language", "minetest.conf");
+			if ( language != "" )
 			{
-			 
-				line = reader.readLine();
-				if (line.startsWith("language=") || line.startsWith("language= "))
-				{
-					Log.e("warning","Locale found and set : " + line);
-					return new Locale("sw");
-					// return new Locale(line.split("=")[1].trim());
-				}
-				
+				Log.i("info", "Language is set to <" + language + "> in minetest.conf");
+				return new Locale(language);
 			}
-			is.close();
 		}
-		catch (IOException e1)
+		catch (Exception e)
 		{
 			Log.e("error","Error trying to retrieve language from minetest.conf");
-			e1.printStackTrace();
+			e.printStackTrace();
 		}
 		finally
 		{
 			Log.e("warning", "TTS - Default Locale Selected!");
-			return Locale.getDefault();
+			return Locale.US;
 		}
 	}
 	
 	
 	private void initSpeech()
 	{
-		String speechEngine = getSetting("speech_engine");
+		String speechEngine = getConfigSetting("speech_engine", "minetest.conf");
+
+		// Look for marker file (Paranoia)
+		String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+				+ "/eidy/.filtetts";
+		File file = new File(filename);
+		if (file.exists() )
+		{
+			speechEngine = "edu.cmu.cs.speech.tts.flite";
+		}
+
 
  		if (speechEngine != "")
 		{
@@ -160,7 +171,7 @@ public class MtNativeActivity extends NativeActivity {
 							Log.e("error", "Speech initialisation Failed!");
 					}
 
-				}, speechEngine); // eg "edu.cmu.cs.speech.tts.flite"
+				}, speechEngine);
 			} catch (Exception e)
 			{
 				Log.e("error", "Speech Engine " + speechEngine + " Failed!");
@@ -192,6 +203,10 @@ public class MtNativeActivity extends NativeActivity {
 	}
 	
 	public void speakText(String someText) {
+		if (t1 == null)
+		{
+			initSpeech();
+		}
 		if (t1 != null)
 		{
 	     t1.speak(someText, TextToSpeech.QUEUE_FLUSH, null);
@@ -293,6 +308,7 @@ public class MtNativeActivity extends NativeActivity {
 		System.loadLibrary("crypto");
 		System.loadLibrary("gmp");
 		System.loadLibrary("iconv");
+		System.loadLibrary("libintl");
 
 		// We don't have to load libminetest.so ourselves,
 		// but if we do, we get nicer logcat errors when
