@@ -787,6 +787,7 @@ assets : $(ASSETS_TIMESTAMP)
 	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/fonts;                                   \
 	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/${APP_NAME}/fonts/;         \
 	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/games;                                   \
+	echo "Potential games to copy ${GAMES_TO_COPY}";
 	for game in ${GAMES_TO_COPY}; do                      	                     \
 		echo "Copying asset $$game";											\
 	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/${APP_NAME}/games/;    \
@@ -800,7 +801,6 @@ assets : $(ASSETS_TIMESTAMP)
 	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/${APP_NAME};                   \
 	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/${APP_NAME};                   \
 	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/${APP_NAME};						\
-	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/${APP_NAME};					\
 	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/${APP_NAME};					\
 	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/media;                                \
 	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/${APP_NAME}/media;     \
@@ -817,7 +817,7 @@ assets : $(ASSETS_TIMESTAMP)
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
 	fi
-
+ 
 clean_assets :
 	@$(RM) -r assets
 
