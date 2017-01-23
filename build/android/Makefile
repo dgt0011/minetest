@@ -14,7 +14,7 @@ APP_ROOT = $(ANDR_ROOT)/src/main
 
 GAMES_TO_COPY = minetest_game eidy
 MODS_TO_COPY =
-
+APP_NAME = eidy
 
 VERSION_MAJOR := $(shell cat $(PROJ_ROOT)/CMakeLists.txt | \
 	grep ^set\(VERSION_MAJOR\ | sed 's/)/ /' | cut -f2 -d' ')
@@ -776,33 +776,34 @@ assets : $(ASSETS_TIMESTAMP)
 	if [ $$REFRESH -ne 0 ] ; then                                              \
 	echo "assets changed, refreshing...";                                      \
 	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${APP_ROOT}/assets/eidy;                                      \
-	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/eidy;         \
-	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/eidy;			\
-	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/eidy;                    \
-	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/eidy;                    \
-	mkdir -p ${APP_ROOT}/assets/eidy/client;                                  \
-	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/eidy/client;      \
-	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/eidy/LICENSE.txt;  \
-	mkdir -p ${APP_ROOT}/assets/eidy/fonts;                                   \
-	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/eidy/fonts/;         \
-	mkdir -p ${APP_ROOT}/assets/eidy/games;                                   \
-	for game in ${GAMES_TO_COPY}; do                                           \
-	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/eidy/games/;    \
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME};                                      \
+	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/${APP_NAME};         \
+	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/${APP_NAME};			\
+	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/${APP_NAME};                    \
+	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/${APP_NAME};                    \
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/client;                                  \
+	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/${APP_NAME}/client;      \
+	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/${APP_NAME}/LICENSE.txt;  \
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/fonts;                                   \
+	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/${APP_NAME}/fonts/;         \
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/games;                                   \
+	for game in ${GAMES_TO_COPY}; do                      	                     \
+		echo "Copying asset $$game";											\
+	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/${APP_NAME}/games/;    \
 	done;                                                                      \
-	mkdir -p ${APP_ROOT}/assets/eidy/mods;                                    \
-	touch ${APP_ROOT}/assets/eidy/mods/mods_here.txt;			\
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/mods;                                    \
+	touch ${APP_ROOT}/assets/${APP_NAME}/mods/mods_here.txt;			\
 	for mod in ${MODS_TO_COPY}; do                                             \
-	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/eidy/mods/;       \
+	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/${APP_NAME}/mods/;       \
 	done;                                                                      \
-	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/eidy;                         \
-	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/eidy;                   \
-	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/eidy;                   \
-	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/eidy;						\
-	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/eidy;					\
-	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/eidy;					\
-	mkdir -p ${APP_ROOT}/assets/eidy/media;                                \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/eidy/media;     \
+	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/${APP_NAME};                         \
+	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/${APP_NAME};                   \
+	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/${APP_NAME};                   \
+	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/${APP_NAME};						\
+	cp -r ${PROJ_ROOT}/testsounds ${APP_ROOT}/assets/${APP_NAME};					\
+	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/${APP_NAME};					\
+	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/media;                                \
+	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/${APP_NAME}/media;     \
 	cd ${APP_ROOT}/assets ||  exit 1;                                          \
 	find . -name "timestamp" -exec rm {} \; ;                                  \
 	find . -name "*.blend" -exec rm {} \; ;                                    \
@@ -811,7 +812,7 @@ assets : $(ASSETS_TIMESTAMP)
 	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
 	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
 	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L eidy | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
+	find -L ${APP_NAME} | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
 	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
