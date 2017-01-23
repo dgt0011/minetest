@@ -774,46 +774,45 @@ assets : $(ASSETS_TIMESTAMP)
 		REFRESH=1;                                                             \
 	fi;                                                                        \
 	if [ $$REFRESH -ne 0 ] ; then                                              \
-	echo "assets changed, refreshing...";                                      \
-	$(MAKE) clean_assets;                                                      \
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME};                                      \
-	cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/${APP_NAME};         \
-	cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/${APP_NAME};			\
-	cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/${APP_NAME};                    \
-	cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/${APP_NAME};                    \
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/client;                                  \
-	cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/${APP_NAME}/client;      \
-	cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/${APP_NAME}/LICENSE.txt;  \
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/fonts;                                   \
-	cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/${APP_NAME}/fonts/;         \
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/games;                                   \
-	echo "Potential games to copy ${GAMES_TO_COPY}";
-	for game in ${GAMES_TO_COPY}; do                      	                     \
-		echo "Copying asset $$game";											\
-	    cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/${APP_NAME}/games/;    \
-	done;                                                                      \
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/mods;                                    \
-	touch ${APP_ROOT}/assets/${APP_NAME}/mods/mods_here.txt;			\
-	for mod in ${MODS_TO_COPY}; do                                             \
-	    cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/${APP_NAME}/mods/;       \
-	done;                                                                      \
-	cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/${APP_NAME};                         \
-	cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/${APP_NAME};                   \
-	cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/${APP_NAME};                   \
-	cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/${APP_NAME};						\
-	cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/${APP_NAME};					\
-	mkdir -p ${APP_ROOT}/assets/${APP_NAME}/media;                                \
-	cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/${APP_NAME}/media;     \
-	cd ${APP_ROOT}/assets ||  exit 1;                                          \
-	find . -name "timestamp" -exec rm {} \; ;                                  \
-	find . -name "*.blend" -exec rm {} \; ;                                    \
-	find . -name "*~" -exec rm {} \; ;                                         \
-	find . -type d -path "*.git" -exec rm -rf {} \; ;                          \
-	find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
-	find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
-	ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
-	find -L ${APP_NAME} | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
-	cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
+		echo "assets changed, refreshing...";                                      \
+		$(MAKE) clean_assets;                                                      \
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME};                                      \
+		cp ${PROJ_ROOT}/minetest.conf.example ${APP_ROOT}/assets/${APP_NAME};         \
+		cp ${PROJ_ROOT}/minetest.conf ${APP_ROOT}/assets/${APP_NAME};			\
+		cp ${PROJ_ROOT}/README.txt ${APP_ROOT}/assets/${APP_NAME};                    \
+		cp -r ${PROJ_ROOT}/builtin ${APP_ROOT}/assets/${APP_NAME};                    \
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME}/client;                                  \
+		cp -r ${PROJ_ROOT}/client/shaders ${APP_ROOT}/assets/${APP_NAME}/client;      \
+		cp ${PROJ_ROOT}/doc/lgpl-2.1.txt ${APP_ROOT}/assets/${APP_NAME}/LICENSE.txt;  \
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME}/fonts;                                   \
+		cp -r ${PROJ_ROOT}/fonts/*.ttf ${APP_ROOT}/assets/${APP_NAME}/fonts/;         \
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME}/games;                                   \
+		for game in ${GAMES_TO_COPY}; do                      	                     \
+			echo "Copying asset $$game";											\
+			cp -r ${PROJ_ROOT}/games/$$game ${APP_ROOT}/assets/${APP_NAME}/games/;    \
+		done;                                                                      \
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME}/mods;                                    \
+		touch ${APP_ROOT}/assets/${APP_NAME}/mods/mods_here.txt;			\
+		for mod in ${MODS_TO_COPY}; do                                             \
+			cp -r ${PROJ_ROOT}/mods/$$mod ${APP_ROOT}/assets/${APP_NAME}/mods/;       \
+		done;                                                                      \
+		cp -r ${PROJ_ROOT}/locale ${APP_ROOT}/assets/${APP_NAME};                         \
+		cp -r ${PROJ_ROOT}/textures ${APP_ROOT}/assets/${APP_NAME};                   \
+		cp -r ${PROJ_ROOT}/cache ${APP_ROOT}/assets/${APP_NAME};                   \
+		cp -r ${PROJ_ROOT}/worlds ${APP_ROOT}/assets/${APP_NAME};						\
+		cp -r ${PROJ_ROOT}/sounds ${APP_ROOT}/assets/${APP_NAME};					\
+		mkdir -p ${APP_ROOT}/assets/${APP_NAME}/media;                                \
+		cp -r ${IRRLICHT_DIR}/media/Shaders ${APP_ROOT}/assets/${APP_NAME}/media;     \
+		cd ${APP_ROOT}/assets ||  exit 1;                                          \
+		find . -name "timestamp" -exec rm {} \; ;                                  \
+		find . -name "*.blend" -exec rm {} \; ;                                    \
+		find . -name "*~" -exec rm {} \; ;                                         \
+		find . -type d -path "*.git" -exec rm -rf {} \; ;                          \
+		find . -type d -path "*.svn" -exec rm -rf {} \; ;                          \
+		find . -type f -path "*.gitignore" -exec rm -rf {} \; ;                    \
+		ls -R | grep ":$$" | sed -e 's/:$$//' -e 's/\.//' -e 's/^\///' > "index.txt"; \
+		find -L ${APP_NAME} | grep -v "base/pack/.*png" | grep -v "base/pack/.*jpg" > filelist.txt;  \
+		cp ${ANDR_ROOT}/${ASSETS_TIMESTAMP} ${ANDR_ROOT}/${ASSETS_TIMESTAMP}.old;  \
 	else                                                                       \
 		echo "nothing to be done for assets";                                  \
 	fi
