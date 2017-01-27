@@ -67,6 +67,10 @@ public class MtNativeActivity extends NativeActivity {
 
 	private String getConfigSetting(String settingName, String theFile)
 	{
+
+		BufferedReader reader = null;
+		FileReader fileReader = null;
+
 		try
 		{
 			String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
@@ -74,20 +78,18 @@ public class MtNativeActivity extends NativeActivity {
 
 			File file = new File(filename);
 
-			BufferedReader reader = new BufferedReader(new FileReader(file));
-
-			String line = reader.readLine();
-			while (line != null)
+			fileReader = new FileReader(file);
+			reader = new BufferedReader(fileReader);
+			String line = "";
+			while ((line = reader.readLine()) != null)
 			{
 
-				line = reader.readLine();
-				if(line.startsWith(settingName + " =") || line.startsWith(settingName + " ="))
+				if(line.startsWith(settingName + " =") || line.startsWith(settingName + "="))
 				{
 					return line.split("=")[1].trim();
 				}
-
 			}
-			reader.close();
+
 		}
 		catch (IOException e1)
 		{
@@ -96,10 +98,21 @@ public class MtNativeActivity extends NativeActivity {
 		}
 		finally
 		{
-			return "";
+			try
+			{
+				if (reader != null) reader.close();
+				if (fileReader != null) fileReader.close();
+			}
+			catch(IOException ex)
+			{
+				ex.printStackTrace();
+			}
 		}
 
+		return "";
 	}
+
+
 	
 	private Locale GetLocale()
 	{
