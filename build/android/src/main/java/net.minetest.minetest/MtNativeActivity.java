@@ -60,13 +60,16 @@ public class MtNativeActivity extends NativeActivity {
 			fOut.close();
 			
         } catch (Exception e) {
-              Log.e("error", "Could not create " + filename + " : ",e);
+              Log.e("eidy", "Could not create " + filename + " : ",e);
         } 
 
 	}
 
+
 	private String getConfigSetting(String settingName, String theFile)
 	{
+
+		String retvalue = "";
 
 		BufferedReader reader = null;
 		FileReader fileReader = null;
@@ -86,14 +89,15 @@ public class MtNativeActivity extends NativeActivity {
 
 				if(line.startsWith(settingName + " =") || line.startsWith(settingName + "="))
 				{
-					return line.split("=")[1].trim();
+					retvalue = line.split("=")[1].trim();
+					break;
 				}
 			}
 
 		}
 		catch (IOException e1)
 		{
-			Log.e("error","Error trying to retrieve language from minetest.conf");
+			Log.e("eidy","Error trying to retrieve language from " + theFile);
 			e1.printStackTrace();
 		}
 		finally
@@ -109,11 +113,11 @@ public class MtNativeActivity extends NativeActivity {
 			}
 		}
 
-		return "";
+		Log.i("eidy", "Read config value <" + retvalue + "> for " + settingName + " in " + theFile);
+
+		return retvalue;
 	}
 
-
-	
 	private Locale GetLocale()
 	{
 
