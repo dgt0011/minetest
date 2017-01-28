@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnKeyListener;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
 
@@ -68,6 +69,8 @@ public class MinetestTextEntry extends Activity {
 				if ( KeyCode == KeyEvent.KEYCODE_ENTER){
 
 					pushResult(mTextInputWidget.getText().toString());
+				//	InputMethodManager imm = (InputMethodManager) getSystemService(this.INPUT_METHOD_SERVICE);
+				//	imm.hideSoftInputFromWindow(yourEditText.getWindowToken(), 0);
 					return true;
 				}
 				return false;
@@ -78,7 +81,9 @@ public class MinetestTextEntry extends Activity {
 		mTextInputDialog.show();
 
 		// request keyboard
-		mTextInputDialog.getWindow().setSoftInputMode (WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+		//mTextInputDialog.getWindow().setSoftInputMode (WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+		InputMethodManager imm = (InputMethodManager) getSystemService(this.INPUT_METHOD_SERVICE);
+		imm.showSoftInput(mTextInputWidget, InputMethodManager.SHOW_IMPLICIT);
 	}
 	
 	public void pushResult(String text) {
