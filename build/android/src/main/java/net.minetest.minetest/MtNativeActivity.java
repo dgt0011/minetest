@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
@@ -272,10 +273,50 @@ public class MtNativeActivity extends NativeActivity {
 		m_MessageReturnValue = "";
 		m_MessagReturnCode   = -1;
 	}
-	
+
+
+	static final int REQUEST_IMAGE_CAPTURE = 1;
+
+	private void dispatchTakePictureIntent() {
+		Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+		if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+			 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+			 }
+	}
+
 	public void showBrowser(String url) {
-		Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
-        startActivity(intent);
+
+		if (url == "about:takephotowiththecameraapp")
+		{
+			dispatchTakePictureIntent();
+		}
+		else if (url.endsWith(".mp4") && !url.contains(":"))
+		{
+			// Default to camera folder
+			if (!url.contains("/"))
+			{
+				url = "/DCIM/Camera/" + url;
+			}
+
+			String filename = Environment.getExternalStorageDirectory().getAbsolutePath()
+					+ url;
+			File filecheck = new File(filename);
+			if (filecheck.exists())
+			{
+				Intent intent = new Intent(MtNativeActivity.this, VideoPlayer.class);
+				intent.putExtra("videofilename", filename);
+				startActivity(intent);
+			}
+			else
+			{
+				Log.e("eidy", "Cannot find video file " + filename);
+			}
+		}
+		else
+		{
+			Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
+			startActivity(intent);
+		}
 	}	
 
 	public static native void putMessageBoxResult(String text);
