@@ -303,7 +303,7 @@ public class MtNativeActivity extends NativeActivity {
 			File filecheck = new File(filename);
 			if (filecheck.exists())
 			{
-				Intent intent = new Intent(MtNativeActivity.this, VideoPlayer.class);
+				Intent intent = new Intent(MtNativeActivity.this, VideoPlayerActivity.class);
 				intent.putExtra("videofilename", filename);
 				startActivity(intent);
 			}
@@ -314,7 +314,10 @@ public class MtNativeActivity extends NativeActivity {
 		}
 		else
 		{
-			Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
+			/*Intent intent = new Intent("android.intent.action.VIEW", Uri.parse(url));
+			startActivity(intent);*/
+			Intent intent = new Intent(MtNativeActivity.this, WebViewActivity.class);
+			intent.putExtra("url", url);
 			startActivity(intent);
 		}
 	}	

@@ -22,6 +22,9 @@
 			</intent-filter>
 			<meta-data android:name="android.app.lib_name" android:value="minetest" />
 		</activity>
+		<activity
+			android:name=".WebViewActivity"
+			android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
 		<activity android:name=".MinetestTextEntry"
 				android:theme="@style/Theme.Transparent"
 				android:excludeFromRecents="true">
